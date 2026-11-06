@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
 
 import { useSiteContentQuery } from "@/hooks/use-site-content";
 import { SiteHeader } from "@/components/home/site-header";
@@ -15,14 +14,15 @@ import { SiteFooter } from "@/components/home/site-footer";
 
 export const Route = createFileRoute("/")({
   head: () => ({
+    links: [{ rel: "canonical", href: "https://yourhomesake.com/" }],
     meta: [
-      { title: "Homesake | Home Maintenance in South Elgin, IL" },
+      { title: "Home Maintenance in South Elgin, IL | Homesake" },
       {
         name: "description",
         content:
           "Routine home maintenance, documented home checks, and contractor coordination in South Elgin and nearby communities.",
       },
-      { property: "og:title", content: "Homesake | Home Maintenance in South Elgin, IL" },
+      { property: "og:title", content: "Home Maintenance in South Elgin, IL | Homesake" },
       {
         property: "og:description",
         content:
@@ -36,8 +36,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  // Hold the page until the saved (editor) content is in hand, so visitors never
-  // see the shipped fallback copy flash before the real content swaps in.
+  // The public copy can render immediately. Wait for saved settings before
+  // showing purchase options or enabling the consultation form.
   const { isPending } = useSiteContentQuery();
 
   useEffect(() => {
@@ -45,14 +45,6 @@ function Index() {
     const id = decodeURIComponent(window.location.hash.slice(1));
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }));
   }, [isPending]);
-
-  if (isPending) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-background" aria-busy="true">
-        <Loader2 className="size-6 animate-spin text-primary" aria-label="Loading" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,8 +54,16 @@ function Index() {
         <Services />
         <HomeHealth />
         <Coverage />
-        <Pricing />
-        <Consultation />
+        {isPending ? (
+          <p className="mx-auto max-w-7xl px-6 py-8 text-sm text-muted-foreground" role="status">
+            Loading membership and consultation details…
+          </p>
+        ) : (
+          <>
+            <Pricing />
+            <Consultation />
+          </>
+        )}
       </main>
       <SiteFooter />
     </div>

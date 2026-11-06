@@ -9,13 +9,14 @@ import { resolveRole } from "@/hooks/use-auth";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Set a New Password — Home Harmony Hub" },
+      { name: "robots", content: "noindex" },
+      { title: "Set a New Password — Homesake" },
       {
         name: "description",
         content:
-          "Choose a new password for your Home Harmony Hub portal account after requesting a reset link.",
+          "Choose a new password for your Homesake portal account after requesting a reset link.",
       },
-      { property: "og:title", content: "Set a New Password — Home Harmony Hub" },
+      { property: "og:title", content: "Set a New Password — Homesake" },
       {
         property: "og:description",
         content: "Securely update your member or admin portal password.",
@@ -83,8 +84,8 @@ function ResetPasswordPage() {
   return (
     <div className="grid min-h-screen place-items-center bg-background px-6 py-16">
       <div className="w-full max-w-md">
-        <Link to="/" className="flex justify-center" aria-label="Home Harmony Hub — home">
-          <img src={logoUrl} alt="Home Harmony Hub logo" className="h-11 w-auto" />
+        <Link to="/" className="flex justify-center" aria-label="Homesake — home">
+          <img src={logoUrl} alt="Homesake logo" className="h-11 w-auto" />
         </Link>
 
         <div className="panel mt-10 rounded-sm p-8">

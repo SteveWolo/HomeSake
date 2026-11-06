@@ -23,14 +23,15 @@ import { useSiteContent } from "@/hooks/use-site-content";
 
 export const Route = createFileRoute("/our-standards")({
   head: () => ({
+    links: [{ rel: "canonical", href: "https://yourhomesake.com/our-standards" }],
     meta: [
-      { title: "Our Standards — Homesake Home Care" },
+      { title: "How Homesake Home Maintenance Visits Work" },
       {
         name: "description",
         content:
-          "How Homesake selects, screens, and trains the professionals who enter your home, and how every visit is cared for and documented.",
+          "See who comes to your home, what Homesake checks and maintains, and what you receive after a scheduled visit.",
       },
-      { property: "og:title", content: "Our Standards — Homesake Home Care" },
+      { property: "og:title", content: "How Homesake Home Maintenance Visits Work" },
       {
         property: "og:description",
         content: "Carefully selected professionals, consistent training, respectful service, and a documented record of every visit.",
@@ -76,6 +77,9 @@ export default function StandardsPage() {
             </div>
             <div className="border-l border-primary/50 pl-6 lg:mb-2 lg:pl-8">
               <p className="text-sm leading-7 text-muted-foreground lg:text-base">{standards.intro}</p>
+              <a href="/membership-benefits" className="mt-4 inline-block text-sm text-primary underline">
+                Compare maintenance plans
+              </a>
             </div>
           </div>
           <div className="mx-auto mt-14 max-w-7xl px-6 lg:mt-20 lg:px-10">

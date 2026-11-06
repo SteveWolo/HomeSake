@@ -28,8 +28,8 @@ type EditorGroup =
 const SECTIONS: { key: keyof SiteContent; label: string; hint: string; group: EditorGroup }[] = [
   {
     key: "seo",
-    label: "SEO & analytics",
-    hint: "Meta title/description/keywords, custom head & body scripts",
+    label: "Analytics scripts",
+    hint: "Custom head and body scripts. Page titles and descriptions are set per page.",
     group: "global",
   },
   { key: "header", label: "Header & navigation", hint: "Logo, menu links, portal button", group: "global" },
@@ -636,9 +636,12 @@ export function SiteEditor() {
         <p className="mt-1 text-xs text-muted-foreground">{active.hint}</p>
         <div className="mt-6">
           <Node
-            value={draft[section] as Json}
+            value={(section === "seo" ? { headScripts: draft.seo.headScripts, bodyScripts: draft.seo.bodyScripts } : draft[section]) as Json}
             fieldKey={String(section)}
-            onChange={(next) => setDraft({ ...draft, [section]: next } as SiteContent)}
+            onChange={(next) => setDraft({
+              ...draft,
+              [section]: section === "seo" ? { ...draft.seo, ...(next as Partial<SiteContent["seo"]>) } : next,
+            } as SiteContent)}
           />
         </div>
       </section>

@@ -18,6 +18,7 @@ import { Route as MeetTheTeamRouteImport } from './routes/meet-the-team'
 import { Route as MembershipBenefitsRouteImport } from './routes/membership-benefits'
 import { Route as OurStandardsRouteImport } from './routes/our-standards'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ServiceAreasRouteImport } from './routes/service-areas'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -69,6 +70,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ServiceAreasRoute = ServiceAreasRouteImport.update({
+  id: '/service-areas',
+  path: '/service-areas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/membership-benefits': typeof MembershipBenefitsRoute
   '/our-standards': typeof OurStandardsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/service-areas': typeof ServiceAreasRoute
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/membership-benefits': typeof MembershipBenefitsRoute
   '/our-standards': typeof OurStandardsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/service-areas': typeof ServiceAreasRoute
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/membership-benefits': typeof MembershipBenefitsRoute
   '/our-standards': typeof OurStandardsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/service-areas': typeof ServiceAreasRoute
   '/terms': typeof TermsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/membership-benefits'
     | '/our-standards'
     | '/reset-password'
+    | '/service-areas'
     | '/terms'
     | '/admin'
     | '/dashboard'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/membership-benefits'
     | '/our-standards'
     | '/reset-password'
+    | '/service-areas'
     | '/terms'
     | '/admin'
     | '/dashboard'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/membership-benefits'
     | '/our-standards'
     | '/reset-password'
+    | '/service-areas'
     | '/terms'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
@@ -212,6 +224,7 @@ export interface RootRouteChildren {
   MembershipBenefitsRoute: typeof MembershipBenefitsRoute
   OurStandardsRoute: typeof OurStandardsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ServiceAreasRoute: typeof ServiceAreasRoute
   TermsRoute: typeof TermsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
@@ -283,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/service-areas': {
+      id: '/service-areas'
+      path: '/service-areas'
+      fullPath: '/service-areas'
+      preLoaderRoute: typeof ServiceAreasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -351,6 +371,7 @@ const rootRouteChildren: RootRouteChildren = {
   MembershipBenefitsRoute: MembershipBenefitsRoute,
   OurStandardsRoute: OurStandardsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ServiceAreasRoute: ServiceAreasRoute,
   TermsRoute: TermsRoute,
   AdminLoginRoute: AdminLoginRoute,
   PayInvoiceIdRoute: PayInvoiceIdRoute,

@@ -19,18 +19,19 @@ import { useSiteContent } from "@/hooks/use-site-content";
 
 export const Route = createFileRoute("/meet-the-team")({
   head: () => ({
+    links: [{ rel: "canonical", href: "https://yourhomesake.com/meet-the-team" }],
     meta: [
-      { title: "Meet the Team — Homesake Home Care" },
+      { title: "Meet Steven Woloszyk, Founder of Homesake" },
       {
         name: "description",
         content:
-          "The people behind your peace of mind: dedicated professionals committed to protecting and preserving your home.",
+          "Meet Steven Woloszyk and the Homesake team providing scheduled home maintenance and home checks in the South Elgin area.",
       },
-      { property: "og:title", content: "Meet the Team — Homesake Home Care" },
+      { property: "og:title", content: "Meet Steven Woloszyk, Founder of Homesake" },
       {
         property: "og:description",
         content:
-          "Founder Steven Woloszyk and the Homesake team bring law-enforcement integrity and licensed contracting craft to every home.",
+          "Meet Steven Woloszyk, a former St. Charles police officer and the founder of South Elgin-based Homesake.",
       },
       { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary_large_image" },

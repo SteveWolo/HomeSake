@@ -9,13 +9,14 @@ import { resolveRole } from "@/hooks/use-auth";
 export const Route = createFileRoute("/admin/login")({
   head: () => ({
     meta: [
-      { title: "Admin & Contractor Login — Home Harmony Hub" },
+      { name: "robots", content: "noindex" },
+      { title: "Admin & Contractor Login — Homesake" },
       {
         name: "description",
         content:
           "Estate managers and contractors sign in here to manage clients, appointments, visit reports, and invoices.",
       },
-      { property: "og:title", content: "Admin & Contractor Login — Home Harmony Hub" },
+      { property: "og:title", content: "Admin & Contractor Login — Homesake" },
       {
         property: "og:description",
         content: "Internal operations sign-in for estate managers and contractors.",
@@ -96,8 +97,8 @@ function AdminLoginPage() {
   return (
     <div className="grid min-h-screen place-items-center bg-background px-6 py-16">
       <div className="w-full max-w-md">
-        <Link to="/" className="flex justify-center" aria-label="Home Harmony Hub — home">
-          <img src={logoUrl} alt="Home Harmony Hub logo" className="h-11 w-auto" />
+        <Link to="/" className="flex justify-center" aria-label="Homesake — home">
+          <img src={logoUrl} alt="Homesake logo" className="h-11 w-auto" />
         </Link>
 
         <div className="panel mt-10 rounded-sm p-8">

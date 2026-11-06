@@ -20,13 +20,14 @@ export const Route = createFileRoute("/checkout")({
   validateSearch: (search) => searchSchema.parse(search),
   head: () => ({
     meta: [
-      { title: "Membership Checkout — Homesake" },
+      { name: "robots", content: "noindex" },
+      { title: "Homesake Membership Checkout" },
       {
         name: "description",
         content:
           "Complete your Homesake membership: account details and secure Stripe card payment on one page. Your portal account is created once payment clears.",
       },
-      { property: "og:title", content: "Membership Checkout — Homesake" },
+      { property: "og:title", content: "Homesake Membership Checkout" },
       {
         property: "og:description",
         content: "One-step membership checkout with secure recurring Stripe billing.",

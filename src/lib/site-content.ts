@@ -306,11 +306,11 @@ export const defaultSiteContent: SiteContent = {
     loginHref: "/login",
   },
   hero: {
-    title: "Routine maintenance",
+    title: "Home maintenance",
     titleAccent: "and home checks",
-    titleEnd: "in the South Elgin area",
+    titleEnd: "in South Elgin, IL",
     subtitle:
-      "We check your home, handle included upkeep, and document each visit. When something needs specialized work, we can help coordinate the right professional.",
+      "Homesake helps you stay on top of routine home maintenance with scheduled visits, included upkeep, and a clear record of what we checked. We can change standard HVAC filters and replace detector batteries when included in your plan. If something needs specialized work, we can help coordinate the right professional.",
     primaryCta: { label: "Request a Free Consultation", href: "#consultation" },
     secondaryCta: { label: "Get a Free Consultation", href: "#consultation" },
     image: heroImage,
@@ -331,8 +331,8 @@ export const defaultSiteContent: SiteContent = {
   },
   health: {
     eyebrow: "Member dashboard preview",
-    title: "Your Home Health at a Glance",
-    intro: "A living record of every system in your home, updated after each inspection.",
+    title: "Your Home Maintenance Report",
+    intro: "See completed maintenance, photos when applicable, and items that need follow-up after your scheduled visit.",
     score: 94,
     scoreBadge: "Excellent",
     overallLabel: "Overall score",
@@ -353,59 +353,59 @@ export const defaultSiteContent: SiteContent = {
   },
   services: {
     eyebrow: "How it works",
-    title: "Three steps to a home that",
-    titleAccent: "maintains itself.",
+    title: "What We Check and",
+    titleAccent: "Maintain During a Visit",
     steps: [
       {
         number: "01",
         title: "The walkthrough",
-        body: "A certified estate manager documents every system, appliance, warranty, and finish in your home.",
+        body: "We start by learning about your home and noting the accessible systems and equipment that need routine care.",
       },
       {
         number: "02",
         title: "The care plan",
-        body: "We build a seasonal maintenance calendar with cost forecasts, so nothing is a surprise.",
+        body: "We schedule routine maintenance and seasonal home checks based on your membership.",
       },
       {
         number: "03",
         title: "We handle it",
-        body: "Scheduling, contractor vetting, on-site supervision, invoices, and follow-up. You approve, we execute.",
+        body: "We document the visit, explain what needs attention, and can help arrange a qualified contractor at your request.",
       },
     ],
     image: craftImage,
     imageAlt: "Craftsman fitting a brass fixture in a luxury home",
-    imageTitle: "Every trade, personally vetted.",
-    imageNote: "Fewer than 1 in 9 applicants join our bench.",
+    imageTitle: "Routine home maintenance",
+    imageNote: "Small upkeep tasks and a record of what was completed.",
     cards: [
       {
         title: "Preventive maintenance",
-        body: "HVAC, plumbing, roofing, and mechanicals on a scheduled cadence.",
+        body: "We handle approved upkeep such as standard filter changes, detector batteries, and accessible loose hardware.",
       },
       {
-        title: "Vetted contractor bench",
-        body: "Licensed, insured, background-checked trades at member-only rates.",
+        title: "Contractor coordination",
+        body: "When work needs a specialist, we can help coordinate a qualified contractor at your request.",
       },
       {
-        title: "Emergency response",
-        body: "24/7 line with a named human. Triage in minutes, not hours.",
+        title: "Visual home checks",
+        body: "We look for visible issues such as leaks or deterioration and let you know what needs attention.",
       },
       {
-        title: "Project management",
-        body: "Renovations supervised end-to-end with transparent bid comparison.",
+        title: "Visit documentation",
+        body: "Review completed tasks, observations, and photos when applicable.",
       },
       {
-        title: "Vendor coordination",
-        body: "Landscaping, pool, cleaning, and seasonal crews on one calendar.",
+        title: "Seasonal upkeep",
+        body: "Scheduled visits help you keep up with seasonal home maintenance and follow-up items.",
       },
       {
-        title: "Home concierge",
-        body: "Deliveries, guest prep, and pre-arrival readiness for second homes.",
+        title: "Vacation home checks",
+        body: "Ask about Homesake Away for scheduled checks while you travel.",
       },
     ],
   },
   coverage: {
     eyebrow: "Coverage",
-    title: "Are we on your street yet?",
+    title: "Home Maintenance Service Areas",
     body: "Based in South Elgin, Illinois. Check your ZIP code or request a free consultation to confirm service at your address.",
     placeholder: "Enter ZIP code",
     buttonLabel: "Check",
@@ -419,8 +419,8 @@ export const defaultSiteContent: SiteContent = {
   },
   pricing: {
     eyebrow: "Membership",
-    title: "Priced like a service.",
-    titleAccent: "Felt like a staff.",
+    title: "Compare Home Maintenance",
+    titleAccent: "Memberships",
     monthlyLabel: "Monthly",
     annualLabel: "Annual — Save 15%",
     featuredBadge: "Most chosen",
@@ -597,7 +597,7 @@ export const defaultSiteContent: SiteContent = {
   },
   faq: {
     eyebrow: "Support",
-    title: "Frequently asked questions",
+    title: "Home Maintenance Membership FAQ",
     intro:
       "Everything members ask about what Homesake does, how visits work, and how billing is handled.",
     searchPlaceholder: "Search questions…",
@@ -609,7 +609,7 @@ export const defaultSiteContent: SiteContent = {
   },
   standards: {
     eyebrow: "Our Standards",
-    title: "Your home deserves a higher standard.",
+    title: "What to Expect During a Homesake Visit",
     intro:
       "Inviting someone into your home requires trust. At Homesake, that trust is something we believe must be earned on every visit. That's why we've created clear standards for how our team members are selected, trained, identified, how they enter and care for your home, and how every visit is documented.",
     trustStatement:
@@ -633,8 +633,8 @@ export const defaultSiteContent: SiteContent = {
   },
   team: {
     eyebrow: "Meet the team",
-    title: "The People Behind Your Peace of Mind",
-    subtitle: "Dedicated professionals committed to protecting and preserving your home.",
+    title: "Meet Steven Woloszyk, Founder of Homesake",
+    subtitle: "Meet the team behind Homesake’s scheduled home maintenance and home checks in the South Elgin area.",
     founderName: "Steven Woloszyk",
     founderRole: "Founder & CEO",
     founderBio:
@@ -642,7 +642,7 @@ export const defaultSiteContent: SiteContent = {
     founderQuote:
       "We help homeowners stay on top of routine upkeep and know what needs attention after each visit.",
     founderImage: craftImage,
-    founderImageAlt: "Steven Woloszyk, founder of Homesake",
+    founderImageAlt: "Detail of home maintenance work",
     valuesTitle: "What we stand for",
     values: [
       {
@@ -733,7 +733,7 @@ export const defaultSiteContent: SiteContent = {
   },
   benefits: {
     eyebrow: "Membership benefits",
-    title: "The 350-Point Year-Round Home Care System",
+    title: "Compare Home Maintenance Membership Plans",
     intro:
       "A clear guide to what Homesake checks, what each service covers, and when each level of care happens throughout the year. We check. We maintain. We document. We coordinate.",
     chartTitle: "Membership packages at a glance",
@@ -745,7 +745,7 @@ export const defaultSiteContent: SiteContent = {
       "Pool & Hot Tub / Spa Care are optional add-ons for homes with these features at $20 per applicable visit. If a home has both a pool and a hot tub/spa, each selected add-on is $20 per visit.",
     ctaLabel: "Choose a membership",
     ctaHref: "/#pricing",
-    systemTitle: "How the 350-Point System works",
+    systemTitle: "The 350-Point Year-Round Home Care System",
     systemBody:
       "The Homesake 350-Point Year-Round Home Care System is the complete care framework. It is not a promise that all 350 checkpoints are performed during a single visit. Checkpoints are scheduled according to membership level, season, equipment, prior findings, and what is present, accessible, safe, and applicable to the home.",
     systemNote:
@@ -834,6 +834,27 @@ export function mergeContent<T>(base: T, saved: unknown): T {
   return (typeof saved === typeof base ? saved : base) as T;
 }
 
+const legacyServiceCopy = new Map<string, string>(Object.entries({
+  "A certified estate manager documents every system, appliance, warranty, and finish in your home.": "We start by learning about your home and noting the accessible systems and equipment that need routine care.",
+  "We build a seasonal maintenance calendar with cost forecasts, so nothing is a surprise.": "We schedule routine maintenance and seasonal home checks based on your membership.",
+  "Scheduling, contractor vetting, on-site supervision, invoices, and follow-up. You approve, we execute.": "We document the visit, explain what needs attention, and can help arrange a qualified contractor at your request.",
+  "HVAC, plumbing, roofing, and mechanicals on a scheduled cadence.": "We handle approved upkeep such as standard filter changes, detector batteries, and accessible loose hardware.",
+  "Vetted contractor bench": "Contractor coordination",
+  "Licensed, insured, background-checked trades at member-only rates.": "When work needs a specialist, we can help coordinate a qualified contractor at your request.",
+  "Emergency response": "Visual home checks",
+  "24/7 line with a named human. Triage in minutes, not hours.": "We look for visible issues such as leaks or deterioration and let you know what needs attention.",
+  "Project management": "Visit documentation",
+  "Renovations supervised end-to-end with transparent bid comparison.": "Review completed tasks, observations, and photos when applicable.",
+  "Vendor coordination": "Seasonal upkeep",
+  "Landscaping, pool, cleaning, and seasonal crews on one calendar.": "Scheduled visits help you keep up with seasonal home maintenance and follow-up items.",
+  "Home concierge": "Vacation home checks",
+  "Deliveries, guest prep, and pre-arrival readiness for second homes.": "Ask about Homesake Away for scheduled checks while you travel.",
+}));
+
+function updatedServiceCopy(value: string): string {
+  return legacyServiceCopy.get(value) ?? value;
+}
+
 /** Fills in fields added after content was first saved (saved arrays win wholesale). */
 function normalize(content: SiteContent): SiteContent {
   const sampleAreas = new Set([
@@ -849,7 +870,8 @@ function normalize(content: SiteContent): SiteContent {
     ? defaultSiteContent.coverage.coveredAreas
     : configuredAreas;
   const waitlistAreas = content.coverage.waitlistAreas.filter((area) => !sampleAreas.has(area.name));
-  const legacyHero = content.hero.title === "Your Trusted Local";
+  const legacyHero =
+    content.hero.title === "Your Trusted Local" || content.hero.title === "Routine maintenance";
   const placeholderPhone = content.consultation.phoneHref === "tel:+18005550142"
     || content.consultation.phoneLabel === "(800) 555-0142";
   return {
@@ -868,12 +890,53 @@ function normalize(content: SiteContent): SiteContent {
         : content.hero.primaryCta,
       trustHighlight: content.hero.trustHighlight === "1,200+" ? "" : content.hero.trustHighlight,
     },
+    health: {
+      ...content.health,
+      title: content.health.title === "Your Home Health at a Glance"
+        ? defaultSiteContent.health.title : content.health.title,
+      intro: content.health.intro === "A living record of every system in your home, updated after each inspection."
+        ? defaultSiteContent.health.intro : content.health.intro,
+    },
+    services: {
+      ...content.services,
+      title: content.services.title === "Three steps to a home that"
+        ? defaultSiteContent.services.title : content.services.title,
+      titleAccent: content.services.titleAccent === "maintains itself."
+        ? defaultSiteContent.services.titleAccent : content.services.titleAccent,
+      imageTitle: content.services.imageTitle === "Every trade, personally vetted."
+        ? defaultSiteContent.services.imageTitle : content.services.imageTitle,
+      imageNote: content.services.imageNote === "Fewer than 1 in 9 applicants join our bench."
+        ? defaultSiteContent.services.imageNote : content.services.imageNote,
+      steps: content.services.steps.map((step) => ({ ...step, body: updatedServiceCopy(step.body) })),
+      cards: content.services.cards.map((card) => ({
+        title: updatedServiceCopy(card.title),
+        body: updatedServiceCopy(card.body),
+      })),
+    },
+    standards: {
+      ...content.standards,
+      title: content.standards.title === "Your home deserves a higher standard."
+        ? defaultSiteContent.standards.title : content.standards.title,
+    },
+    benefits: {
+      ...content.benefits,
+      title: content.benefits.title === "The 350-Point Year-Round Home Care System"
+        ? defaultSiteContent.benefits.title : content.benefits.title,
+      systemTitle: content.benefits.systemTitle === "How the 350-Point System works"
+        ? defaultSiteContent.benefits.systemTitle : content.benefits.systemTitle,
+    },
     consultation: {
       ...content.consultation,
       ...(placeholderPhone ? { phoneLabel: "", phoneHref: "" } : {}),
     },
     team: {
       ...content.team,
+      founderImageAlt: content.team.founderImage === craftImage
+        ? defaultSiteContent.team.founderImageAlt : content.team.founderImageAlt,
+      title: content.team.title === "The People Behind Your Peace of Mind"
+        ? defaultSiteContent.team.title : content.team.title,
+      subtitle: content.team.subtitle === "Dedicated professionals committed to protecting and preserving your home."
+        ? defaultSiteContent.team.subtitle : content.team.subtitle,
       founderBio: content.team.founderBio === "Built on a foundation of service and craftsmanship, Steven founded Homesake after years of dedicated service as a police officer and licensed general contractor. Having seen firsthand how neglected property maintenance leads to costly repairs, he created Homesake—a proactive home management system designed to protect your home's value and give homeowners absolute peace of mind."
         ? defaultSiteContent.team.founderBio : content.team.founderBio,
       founderQuote: content.team.founderQuote === "Your home is your largest investment. Our mission is to handle the details so you never have to worry about unexpected repairs again."
@@ -883,6 +946,8 @@ function normalize(content: SiteContent): SiteContent {
     },
     faq: {
       ...content.faq,
+      title: content.faq.title === "Frequently asked questions"
+        ? defaultSiteContent.faq.title : content.faq.title,
       categories: content.faq.categories.map((category) => ({
         ...category,
         items: category.items.map((item) => item.a === "Yes. Homesake memberships can be canceled at any time. To prevent your next recurring membership charge and future scheduled membership service, cancellation should be submitted at least 24 hours before your next scheduled service visit, subject to the terms of your Membership Service Agreement."
@@ -904,6 +969,8 @@ function normalize(content: SiteContent): SiteContent {
     },
     coverage: {
       ...content.coverage,
+      title: content.coverage.title === "Are we on your street yet?"
+        ? defaultSiteContent.coverage.title : content.coverage.title,
       ...(content.coverage.body === "We operate in eight metros with a full contractor bench in each. Enter your ZIP to see availability and current onboarding time." ? {
         body: defaultSiteContent.coverage.body,
         coveredNote: defaultSiteContent.coverage.coveredNote,
@@ -918,6 +985,10 @@ function normalize(content: SiteContent): SiteContent {
     },
     pricing: {
       ...content.pricing,
+      title: content.pricing.title === "Priced like a service."
+        ? defaultSiteContent.pricing.title : content.pricing.title,
+      titleAccent: content.pricing.titleAccent === "Felt like a staff."
+        ? defaultSiteContent.pricing.titleAccent : content.pricing.titleAccent,
       tiers: content.pricing.tiers.map((t) => ({
         ...t,
         features: t.features.map((feature) => feature === "Two supervised service visits / year"

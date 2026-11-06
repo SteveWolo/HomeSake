@@ -8,16 +8,17 @@ import { useSiteContent } from "@/hooks/use-site-content";
 
 export const Route = createFileRoute("/membership-benefits")({
   head: () => ({
+    links: [{ rel: "canonical", href: "https://yourhomesake.com/membership-benefits" }],
     meta: [
-      { title: "Membership Benefits — The Homesake 350-Point Home Care System" },
+      { title: "Home Maintenance Membership Plans | Homesake" },
       {
         name: "description",
         content:
-          "Compare Homesake memberships and see all 350 checkpoints: what we check, what we maintain, what we document, and when each service happens.",
+          "Compare quarterly and monthly home maintenance memberships, included upkeep, visit checklists, and optional add-ons.",
       },
       {
         property: "og:title",
-        content: "Membership Benefits — The Homesake 350-Point Home Care System",
+        content: "Home Maintenance Membership Plans | Homesake",
       },
       {
         property: "og:description",
