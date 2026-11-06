@@ -5,14 +5,15 @@ import { useSiteContent } from "@/hooks/use-site-content";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
+    links: [{ rel: "canonical", href: "https://yourhomesake.com/terms" }],
     meta: [
-      { title: "Terms and Conditions — Homesake Membership" },
+      { title: "Homesake Membership Terms" },
       {
         name: "description",
         content:
           "Homesake membership terms: services scope, visual non-invasive checks, maintenance limits, emergency exclusions, recurring billing, cancellation and liability.",
       },
-      { property: "og:title", content: "Terms and Conditions — Homesake Membership" },
+      { property: "og:title", content: "Homesake Membership Terms" },
       {
         property: "og:description",
         content:

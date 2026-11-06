@@ -2,32 +2,12 @@ import { useEffect } from "react";
 
 import { useSiteContent } from "@/hooks/use-site-content";
 
-function setMeta(attr: "name" | "property", key: string, content: string) {
-  if (!content) return;
-  let tag = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
-  if (!tag) {
-    tag = document.createElement("meta");
-    tag.setAttribute(attr, key);
-    document.head.appendChild(tag);
-  }
-  tag.setAttribute("content", content);
-}
-
-/**
- * Applies the global SEO fields and custom analytics snippets saved in the
- * Site editor. Runs on the client so admins can change them without a rebuild.
- */
+/** Applies the custom analytics snippets saved in the Site editor. */
 export function SeoInjector() {
   const { seo } = useSiteContent();
 
   useEffect(() => {
     if (!seo) return;
-    if (seo.metaTitle) document.title = seo.metaTitle;
-    setMeta("name", "description", seo.metaDescription);
-    setMeta("name", "keywords", seo.metaKeywords);
-    setMeta("property", "og:title", seo.metaTitle);
-    setMeta("property", "og:description", seo.metaDescription);
-
     const injected: Element[] = [];
     const mount = (html: string, target: HTMLElement, marker: string) => {
       if (!html.trim()) return;

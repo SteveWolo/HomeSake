@@ -8,14 +8,15 @@ import { useSiteContent } from "@/hooks/use-site-content";
 
 export const Route = createFileRoute("/faq")({
   head: () => ({
+    links: [{ rel: "canonical", href: "https://yourhomesake.com/faq" }],
     meta: [
-      { title: "Frequently Asked Questions — Homesake" },
+      { title: "Home Maintenance Membership FAQ | Homesake" },
       {
         name: "description",
         content:
-          "Answers about Homesake memberships, visits, repairs, contractors, safety, billing, and cancellation.",
+          "Find out what Homesake maintains, how often we visit, where we serve, and how vacation home checks and billing work.",
       },
-      { property: "og:title", content: "Frequently Asked Questions — Homesake" },
+      { property: "og:title", content: "Home Maintenance Membership FAQ | Homesake" },
       {
         property: "og:description",
         content: "Answers about Homesake home management, coverage, visits, repairs, and billing.",
@@ -65,13 +66,23 @@ function FaqItem({
 
 function FaqPage() {
   const { faq } = useSiteContent();
+  const categories = faq.categories;
   const [query, setQuery] = useState("");
   const [openKey, setOpenKey] = useState<string | null>("0-0");
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return faq.categories;
-    return faq.categories
+    const priority = [
+      "Membership & what's included",
+      "Visits & home records",
+      "Homesake Away & family support",
+    ];
+    const ordered = [
+      ...priority.flatMap((title) => categories.filter((category) => category.title === title)),
+      ...categories.filter((category) => !priority.includes(category.title)),
+    ];
+    if (!needle) return ordered;
+    return ordered
       .map((category) => ({
         ...category,
         items: category.items.filter(
@@ -79,7 +90,7 @@ function FaqPage() {
         ),
       }))
       .filter((category) => category.items.length > 0);
-  }, [faq.categories, query]);
+  }, [categories, query]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -94,6 +105,10 @@ function FaqPage() {
                 {faq.title}
               </h1>
               <p className="mt-7 max-w-2xl text-base leading-8 text-muted-foreground lg:text-lg">{faq.intro}</p>
+              <div className="mt-4 flex flex-wrap gap-4 text-sm text-primary">
+                <a href="/membership-benefits" className="underline">Compare maintenance plans</a>
+                <a href="/service-areas" className="underline">Check service coverage</a>
+              </div>
             </div>
             <label className="relative block border-b border-primary/50">
               <span className="sr-only">Search frequently asked questions</span>

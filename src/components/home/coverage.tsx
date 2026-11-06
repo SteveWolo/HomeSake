@@ -9,7 +9,7 @@ type Result =
   | { status: "none" }
   | { status: "invalid" };
 
-export function Coverage() {
+export function Coverage({ showServiceAreasLink = true }: { showServiceAreasLink?: boolean }) {
   const { coverage } = useSiteContent();
   const [zip, setZip] = useState("");
   const [checking, setChecking] = useState(false);
@@ -45,6 +45,9 @@ export function Coverage() {
                 {coverage.title}
               </h2>
               <p className="mt-5 max-w-md leading-relaxed text-muted-foreground">{coverage.body}</p>
+              {showServiceAreasLink && <a href="/service-areas" className="mt-3 inline-block text-sm text-primary underline">
+                See Homesake service areas
+              </a>}
 
               <form onSubmit={check} className="mt-9 flex max-w-md gap-3">
                 <div className="relative flex-1">
