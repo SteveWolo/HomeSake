@@ -1,0 +1,211 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Home Harmony Hub design system.
+ * Palette: deep espresso charcoal, warm ivory, aged brass.
+ * Type: Fraunces (display) + Manrope (body).
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-ivory: var(--ivory);
+  --color-brass: var(--brass);
+  --color-brass-soft: var(--brass-soft);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.25rem;
+
+  --background: oklch(0.19 0.045 264);
+  --foreground: oklch(0.95 0.012 250);
+  --surface: oklch(0.23 0.05 264);
+  --surface-raised: oklch(0.27 0.055 264);
+  --ivory: oklch(0.96 0.014 88);
+  --brass: oklch(0.78 0.11 80);
+  --brass-soft: oklch(0.86 0.075 84);
+
+  --card: oklch(0.23 0.05 264);
+  --card-foreground: oklch(0.95 0.012 250);
+  --popover: oklch(0.23 0.05 264);
+  --popover-foreground: oklch(0.95 0.012 250);
+  --primary: oklch(0.78 0.11 80);
+  --primary-foreground: oklch(0.19 0.045 264);
+  --secondary: oklch(0.27 0.055 264);
+  --secondary-foreground: oklch(0.95 0.012 250);
+  --muted: oklch(0.27 0.055 264);
+  --muted-foreground: oklch(0.73 0.028 258);
+  --accent: oklch(0.31 0.06 264);
+  --accent-foreground: oklch(0.95 0.012 250);
+  --destructive: oklch(0.58 0.19 27);
+  --destructive-foreground: oklch(0.97 0.01 85);
+  --border: oklch(0.34 0.05 264);
+  --input: oklch(0.34 0.05 264);
+  --ring: oklch(0.78 0.11 80);
+
+  --sidebar: oklch(0.23 0.05 264);
+  --sidebar-foreground: oklch(0.95 0.012 250);
+  --sidebar-primary: oklch(0.78 0.11 80);
+  --sidebar-primary-foreground: oklch(0.19 0.045 264);
+  --sidebar-accent: oklch(0.27 0.055 264);
+  --sidebar-accent-foreground: oklch(0.95 0.012 250);
+  --sidebar-border: oklch(0.34 0.05 264);
+  --sidebar-ring: oklch(0.78 0.11 80);
+
+  --gradient-brass: linear-gradient(
+    100deg,
+    oklch(0.68 0.09 70),
+    oklch(0.88 0.09 88),
+    oklch(0.72 0.1 74)
+  );
+  --gradient-veil: linear-gradient(
+    180deg,
+    color-mix(in oklab, oklch(0.19 0.045 264) 20%, transparent),
+    oklch(0.19 0.045 264) 92%
+  );
+  --shadow-lift: 0 30px 70px -35px oklch(0.1 0.04 264 / 0.85);
+  --shadow-brass: 0 20px 60px -25px color-mix(in oklab, var(--brass) 45%, transparent);
+}
+
+
+.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--brass) 35%, transparent);
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+
+@utility text-brass-gradient {
+  background: var(--gradient-brass);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brass);
+  font-weight: 600;
+}
+
+@utility hairline {
+  border-top: 1px solid color-mix(in oklab, var(--brass) 22%, transparent);
+}
+
+@utility panel {
+  background: linear-gradient(
+    160deg,
+    color-mix(in oklab, var(--surface-raised) 92%, transparent),
+    color-mix(in oklab, var(--surface) 96%, transparent)
+  );
+  border: 1px solid color-mix(in oklab, var(--brass) 14%, transparent);
+  box-shadow: var(--shadow-lift);
+}
+
+@utility grain {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: radial-gradient(
+      color-mix(in oklab, var(--ivory) 8%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 3px 3px;
+  }
+}
+
+@utility reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: reveal-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes reveal-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) scale(1.02);
+  }
+}
