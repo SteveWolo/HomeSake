@@ -25,6 +25,7 @@ import { PhotoLightbox } from "@/components/portal/photo-lightbox";
 import {
   sendInvoiceDueEmail,
   sendPropertyUpdateEmail,
+  sendVisitDetailsEmail,
 } from "@/lib/notifications.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,6 +37,7 @@ import {
   parseHomeNotes,
   addActivity,
   addOpenItem,
+  completeAppointment,
   createAppointment,
   createInvoice,
   deleteActivity,
@@ -54,6 +56,8 @@ import {
   listClientProfiles,
   listOpenItems,
   listPhotos,
+  listServiceRequests,
+  reviewServiceRequest,
   membershipState,
   resolveOpenItem,
   updateAppointment,
@@ -112,12 +116,14 @@ function ClientRow({
   addresses,
   canDelete,
   onSaved,
+  onOpen,
   onDelete,
 }: {
   profile: ClientProfile;
   addresses: string;
   canDelete: boolean;
   onSaved: () => Promise<void> | void;
+  onOpen?: () => void;
   onDelete: () => Promise<void> | void;
 }) {
   const [tier, setTier] = useState(profile.membership_tier);
@@ -137,7 +143,11 @@ function ClientRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1 break-words">
 
-          <p className="text-sm font-semibold">{profile.full_name || profile.email}</p>
+          {onOpen ? (
+            <button type="button" onClick={onOpen} className="text-left text-sm font-semibold text-primary underline">
+              {profile.full_name || profile.email}
+            </button>
+          ) : <p className="text-sm font-semibold">{profile.full_name || profile.email}</p>}
           <p className="text-xs text-muted-foreground">
             {profile.email}
             {profile.phone ? ` · ${profile.phone}` : ""}
@@ -330,6 +340,7 @@ function AdminPage() {
   const deleteClientFn = useServerFn(adminDeleteClient);
 
   const [tab, setTab] = useState<Tab>("clients");
+  const [clientSearch, setClientSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -347,7 +358,13 @@ function AdminPage() {
   });
   const [appt, setAppt] = useState({ at: "", service: "", notes: "" });
   const [activityTitle, setActivityTitle] = useState("");
-  const [item, setItem] = useState({ title: "", detail: "", priority: "Low" });
+  const [item, setItem] = useState({ title: "", detail: "", action: "", priority: "Low" });
+  const [issueFiles, setIssueFiles] = useState<File[]>([]);
+  const issueFileRef = useRef<HTMLInputElement>(null);
+  const [photoIssueId, setPhotoIssueId] = useState("");
+  const [report, setReport] = useState({ id: "", text: "" });
+  const [working, setWorking] = useState(false);
+  const workingRef = useRef(false);
   const [photoNote, setPhotoNote] = useState("");
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<PhotoWithUrl | null>(null);
@@ -449,6 +466,40 @@ function AdminPage() {
     enabled: !!property,
   });
 
+  const requests = useQuery({
+    queryKey: ["admin-service-requests"],
+    queryFn: () => listServiceRequests(),
+    enabled: isAdmin,
+    refetchInterval: 30_000,
+  });
+
+  const run = async (action: () => Promise<void>) => {
+    if (workingRef.current) return;
+    workingRef.current = true;
+    setWorking(true);
+    setSaved(null);
+    try {
+      await action();
+    } catch (error) {
+      setSaved(error instanceof Error ? error.message : "That action could not be completed.");
+    } finally {
+      workingRef.current = false;
+      setWorking(false);
+    }
+  };
+
+  useEffect(() => {
+    setAppt({ at: "", service: "", notes: "" });
+    setReport({ id: "", text: "" });
+    setItem({ title: "", detail: "", action: "", priority: "Low" });
+    setIssueFiles([]);
+    setPhotoIssueId("");
+    setPhotoNote("");
+    setLightbox(null);
+    setActivityTitle("");
+    setCustomInv({ description: "", amount: "", dueDate: "" });
+  }, [activeId]);
+
   const signOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -458,6 +509,12 @@ function AdminPage() {
 
   const notifyOwner = useServerFn(sendPropertyUpdateEmail);
   const notifyInvoice = useServerFn(sendInvoiceDueEmail);
+  const notifyVisit = useServerFn(sendVisitDetailsEmail);
+
+  const emailVisit = (appointmentId: string) => run(async () => {
+    const result = await notifyVisit({ data: { appointmentId, confirmation: false } });
+    setSaved(result.sent ? "Visit details emailed to the client." : "This visit is no longer scheduled.");
+  });
 
   const sendPropertyUpdate = async () => {
     if (!property) return;
@@ -507,6 +564,7 @@ function AdminPage() {
         userId: user.id,
         file,
         note: photoNote,
+        ...(photoIssueId ? { issueId: photoIssueId } : {}),
       });
       setUploadInfo(
         `Optimized to WebP · ${formatBytes(file.size)} → ${formatBytes(optimized.size)}`,
@@ -537,11 +595,18 @@ function AdminPage() {
   }
 
   const upcomingAll = (allAppointments.data ?? []).filter(
-    (a) => a.status !== "Completed" && new Date(a.scheduled_at).getTime() >= Date.now(),
+    (a) => ["Scheduled", "Rescheduled"].includes(a.status) && Date.parse(a.scheduled_at) >= Date.now(),
   );
   const upcomingProperty = property
     ? upcomingAll.filter((a) => a.property_id === property.id)
     : [];
+
+  const search = clientSearch.trim().toLowerCase();
+  const filteredProfiles = (profiles.data ?? []).filter((profile) =>
+    [profile.full_name, profile.email, ...(properties.data ?? [])
+      .filter((entry) => entry.owner_id === profile.id).map((entry) => entry.address)]
+      .some((value) => (value ?? "").toLowerCase().includes(search)),
+  );
 
   return (
     <div className="min-h-screen bg-background lg:flex">
@@ -663,7 +728,72 @@ function AdminPage() {
             {property ? `${ownerLabel(property.owner_id)} — property overview` : tabs.find((t) => t.id === tab)?.label}
           </h1>
 
-          {saved && <p className="text-xs text-primary">{saved}</p>}
+          {saved && <p role="status" className="text-sm text-primary">{saved}</p>}
+          {tab !== "site" && (
+            <nav aria-label="Quick actions" className="flex flex-wrap gap-3">
+              {property ? (
+                <>
+                  <a href="#schedule" className={ghostBtn}>Schedule visit</a>
+                  <a href="#visit-notes" className={ghostBtn}>Publish visit notes</a>
+                  <a href="#recommendations" className={ghostBtn}>Report an issue</a>
+                  <a href="#custom-invoice" className={ghostBtn}>Send invoice</a>
+                  <a href="#service-requests" className={ghostBtn}>Client requests</a>
+                </>
+              ) : tab === "clients" ? (
+                <><a href="#new-client" className={ghostBtn}>Add client</a>
+                <a href="#directory" className={ghostBtn}>Find client</a>
+                {(requests.isError || requests.data?.some((request) => request.status === "Pending")) &&
+                  <a href="#service-requests" className={ghostBtn}>Client requests</a>}</>
+              ) : null}
+            </nav>
+          )}
+
+          {(property || (tab === "clients" && (requests.isError ||
+            requests.data?.some((request) => request.status === "Pending")))) && (
+            <section className="panel rounded-sm p-6" aria-labelledby="service-requests">
+              <h2 id="service-requests" className="font-display text-xl">Client service requests</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Approving a visit cancellation cancels that booking. For other requests, approval records your decision; coordinate any scope or price change with the client separately.
+              </p>
+              {requests.isError && <p role="alert" className="mt-3 text-destructive">Could not load requests.</p>}
+              <ul className="mt-4 space-y-3">
+                {(requests.data ?? []).filter((request) => property
+                  ? request.property_id === property.id : request.status === "Pending").map((request) => {
+                  const visit = allAppointments.data?.find((appointment) => appointment.id === request.appointment_id);
+                  return (
+                    <li key={request.id} className="rounded-sm border border-border p-4">
+                      <p className="font-semibold">{request.kind} · {request.status}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {propertyLabel(request.property_id)} · {formatDateTime(request.created_at)}
+                      </p>
+                      {visit && <p className="mt-1 text-sm">Visit: {visit.service} · {formatDateTime(visit.scheduled_at)}</p>}
+                      <p className="mt-2 whitespace-pre-wrap break-words text-sm">{request.details}</p>
+                      {request.status === "Pending" && (
+                        <div className="mt-3 flex gap-2">
+                          {(["Approved", "Declined"] as const).map((decision) => (
+                            <button key={decision} type="button" className={ghostBtn} disabled={working}
+                              onClick={() => void run(async () => {
+                                await reviewServiceRequest(request.id, decision);
+                                setSaved(decision === "Approved" ? "Request approved." : "Request declined.");
+                                await Promise.all([
+                                  requests.refetch(), allAppointments.refetch(),
+                                  ...(property ? [propertyAppointments.refetch()] : []),
+                                ]);
+                              })}>
+                              {decision === "Approved" ? "Approve" : "Decline"}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+                {!requests.isPending && !requests.isError && !(requests.data ?? []).some((request) =>
+                  property ? request.property_id === property.id : request.status === "Pending") &&
+                  <li className="text-sm text-muted-foreground">No {property ? "service requests" : "pending requests"}.</li>}
+              </ul>
+            </section>
+          )}
 
           {/* ---------------- Unified property view ---------------- */}
           {property && (
@@ -672,8 +802,8 @@ function AdminPage() {
                 <div>
                   <h2 className={label}>Client notification</h2>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Nothing is emailed automatically. Send one aggregated summary of recent
-                    reports, notes, and photos when the visit work is finished.
+                    Send a summary of recent reports, issues, and photos when the work is finished.
+                    Visit confirmations and reminders are separate.
                   </p>
                 </div>
                 <button
@@ -744,26 +874,26 @@ function AdminPage() {
                 </h2>
                 <form
                   className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-                  onSubmit={async (e) => {
+                  onSubmit={(e) => {
                     e.preventDefault();
                     if (!appt.at || !appt.service.trim()) return;
-                    await createAppointment({
-                      propertyId: property.id,
-                      scheduledAt: appt.at,
-                      service: appt.service.trim(),
-                      notes: appt.notes,
+                    void run(async () => {
+                      if (!(Date.parse(appt.at) > Date.now())) throw new Error("Choose a future date and time.");
+                      const id = await createAppointment({
+                        propertyId: property.id,
+                        scheduledAt: appt.at,
+                        service: appt.service.trim(),
+                        notes: appt.notes,
+                      });
+                      setAppt({ at: "", service: "", notes: "" });
+                      try {
+                        const result = await notifyVisit({ data: { appointmentId: id, confirmation: true } });
+                        setSaved(result.sent ? "Visit scheduled and confirmation emailed." : "Visit scheduled.");
+                      } catch {
+                        setSaved("Visit scheduled. The confirmation email will be retried automatically.");
+                      }
+                      await Promise.all([propertyAppointments.refetch(), allAppointments.refetch()]);
                     });
-                    await updateProperty(property.id, {
-                      next_visit_at: new Date(appt.at).toISOString(),
-                      next_visit_note: appt.service.trim(),
-                    });
-                    setAppt({ at: "", service: "", notes: "" });
-                    setSaved("Appointment scheduled.");
-                    await Promise.all([
-                      propertyAppointments.refetch(),
-                      allAppointments.refetch(),
-                      properties.refetch(),
-                    ]);
                   }}
                 >
                   <input
@@ -771,7 +901,7 @@ function AdminPage() {
                     type="datetime-local"
                     value={appt.at}
                     onChange={(e) => setAppt({ ...appt, at: e.target.value })}
-                    aria-label="Date and time"
+                    aria-label="Date and time in your local time zone"
                     className={field}
                   />
                   <input
@@ -789,8 +919,8 @@ function AdminPage() {
                     aria-label="Notes"
                     className={field}
                   />
-                  <button type="submit" className={btn}>
-                    <Plus className="size-4" /> Schedule
+                  <button type="submit" disabled={working} className={btn}>
+                    <Plus className="size-4" /> Schedule & email
                   </button>
                 </form>
 
@@ -811,31 +941,23 @@ function AdminPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={async () => {
-                            await updateAppointment(a.id, {
-                              reminder_sent_at: new Date().toISOString(),
-                            });
-                            setSaved("Reminder logged for this appointment.");
-                            await allAppointments.refetch();
-                          }}
+                          disabled={working}
+                          onClick={() => void emailVisit(a.id)}
                           className={ghostBtn}
                         >
-                          {a.reminder_sent_at ? "Reminder sent" : "Send reminder"}
+                          Email visit details
                         </button>
                         <button
                           type="button"
-                          onClick={async () => {
-                            await updateAppointment(a.id, { status: "Completed" });
-                            await addActivity(a.property_id, `${a.service} completed`);
-                            await incrementTasksCompleted(a.property_id);
-                            setSaved("Marked complete and logged to the client's activity feed.");
+                          disabled={working}
+                          onClick={() => void run(async () => {
+                            await completeAppointment(a.id);
+                            setSaved("Visit completed and added to the client’s activity.");
                             await Promise.all([
                               allAppointments.refetch(),
-                              propertyAppointments.refetch(),
-                              activity.refetch(),
-                              properties.refetch(),
+                              ...(property ? [propertyAppointments.refetch(), activity.refetch(), properties.refetch()] : []),
                             ]);
-                          }}
+                          })}
                           className={ghostBtn}
                         >
                           Mark complete
@@ -861,6 +983,37 @@ function AdminPage() {
                     <li className="text-sm text-muted-foreground">Nothing scheduled.</li>
                   )}
                 </ul>
+
+                <div className="mt-8 border-t border-border pt-6">
+                  <h3 id="visit-notes" className={label}>Publish notes for a visit</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">Clients see these notes under the visit date.</p>
+                  <form className="mt-4 space-y-3" onSubmit={(event) => {
+                    event.preventDefault();
+                    if (!report.id || !report.text.trim()) return;
+                    void run(async () => {
+                      await updateAppointment(report.id, { visit_report: report.text.trim() }, property.id);
+                      setSaved("Visit notes published to the client dashboard.");
+                      setReport({ id: "", text: "" });
+                      await propertyAppointments.refetch();
+                    });
+                  }}>
+                    <select required aria-label="Visit for notes" className={field} value={report.id}
+                      onChange={(event) => {
+                        const visit = propertyAppointments.data?.find((a) => a.id === event.target.value);
+                        setReport({ id: visit?.id ?? "", text: visit?.visit_report ?? "" });
+                      }}>
+                      <option value="">Choose a visit by date</option>
+                      {(propertyAppointments.data ?? []).filter((a) => a.status !== "Cancelled").map((a) => (
+                        <option key={a.id} value={a.id}>{formatDateTime(a.scheduled_at)} · {a.service}</option>
+                      ))}
+                    </select>
+                    <textarea required maxLength={4000} aria-label="Visit notes for the client"
+                      placeholder="Work completed, observations, and next steps"
+                      className={`${field} min-h-28 py-3`} value={report.text}
+                      onChange={(event) => setReport({ ...report, text: event.target.value })} />
+                    <button type="submit" disabled={working} className={btn}>Publish visit notes</button>
+                  </form>
+                </div>
 
                 <h3 className={`${label} mt-8`}>Appointment history</h3>
                 <ul className="mt-4 space-y-3">
@@ -976,28 +1129,46 @@ function AdminPage() {
                   </h2>
                   <form
                     className="mt-5 space-y-3"
-                    onSubmit={async (e) => {
+                    onSubmit={(e) => {
                       e.preventDefault();
-                      if (!item.title.trim()) return;
-                      await addOpenItem(property.id, item.title.trim(), item.detail, item.priority);
-                      setItem({ title: "", detail: "", priority: "Low" });
-                      await openItems.refetch();
+                      if (!user || !item.title.trim() || !item.detail.trim()) return;
+                      void run(async () => {
+                        const id = await addOpenItem(property.id, item.title.trim(), item.detail.trim(), item.priority, item.action.trim());
+                        setItem({ title: "", detail: "", action: "", priority: "Low" });
+                        setIssueFiles([]);
+                        if (issueFileRef.current) issueFileRef.current.value = "";
+                        const uploads = await Promise.allSettled(issueFiles.map((file) => uploadPhoto({
+                          propertyId: property.id, userId: user.id, file, note: "", issueId: id,
+                        })));
+                        const failed = uploads.filter((result) => result.status === "rejected").length;
+                        if (failed) setPhotoIssueId(id);
+                        setSaved(failed ? `Issue published. ${failed} photo(s) failed. Retry under Visit photos.`
+                          : "Issue published to the client dashboard.");
+                        await Promise.all([openItems.refetch(), photos.refetch()]);
+                      });
                     }}
                   >
                     <input
+                      required
                       value={item.title}
                       onChange={(e) => setItem({ ...item, title: e.target.value })}
                       placeholder="Monitor water heater"
                       aria-label="Item title"
                       className={field}
                     />
-                    <input
-                      value={item.detail}
+                    <textarea required value={item.detail}
                       onChange={(e) => setItem({ ...item, detail: e.target.value })}
-                      placeholder="Minor sediment noise noted."
-                      aria-label="Item detail"
-                      className={field}
-                    />
+                      placeholder="What did you find?" aria-label="Issue description"
+                      className={`${field} min-h-24 py-3`} />
+                    <textarea value={item.action}
+                      onChange={(e) => setItem({ ...item, action: e.target.value })}
+                      placeholder="Recommended action"
+                      aria-label="Recommended action" className={`${field} min-h-24 py-3`} />
+                    <label className="block text-sm">
+                      Photos (optional, up to five)
+                      <input ref={issueFileRef} type="file" accept="image/*" multiple className="mt-2 block w-full text-sm"
+                        onChange={(event) => setIssueFiles(Array.from(event.target.files ?? []).slice(0, 5))} />
+                    </label>
                     <div className="flex gap-3">
                       <select
                         value={item.priority}
@@ -1009,8 +1180,8 @@ function AdminPage() {
                         <option value="Medium">Medium — recommended</option>
                         <option value="Low">Low — recommended</option>
                       </select>
-                      <button type="submit" className={`${btn} shrink-0 px-5`}>
-                        Add
+                      <button type="submit" disabled={working} className={`${btn} shrink-0 px-5`}>
+                        Publish issue
                       </button>
                     </div>
                   </form>
@@ -1031,6 +1202,7 @@ function AdminPage() {
                           {o.detail && (
                             <p className="mt-1 text-xs text-muted-foreground">{o.detail}</p>
                           )}
+                          {o.recommended_action && <p className="mt-1 text-sm">Recommended: {o.recommended_action}</p>}
                           <p className="mt-1 text-[11px] uppercase text-muted-foreground">
                             {o.priority === "High" ? "Urgent repair" : `${o.priority} priority`}
                           </p>
@@ -1076,32 +1248,37 @@ function AdminPage() {
                 </p>
                 <form
                   className="mt-5 grid gap-3 sm:grid-cols-4"
-                  onSubmit={async (e) => {
+                  onSubmit={(e) => {
                     e.preventDefault();
                     if (!property) return;
-                    const created = await createInvoice({
-                      ownerId: property.owner_id,
-                      propertyId: property.id,
-                      amount: Number(customInv.amount),
-                      description: customInv.description,
-                      dueDate: customInv.dueDate || null,
-                      status: "Due",
-                      kind: "Custom",
+                    void run(async () => {
+                      if (!customInv.description.trim() || !(Number(customInv.amount) > 0)) {
+                        throw new Error("Enter a description and a positive invoice amount.");
+                      }
+                      const created = await createInvoice({
+                        ownerId: property.owner_id,
+                        propertyId: property.id,
+                        amount: Number(customInv.amount),
+                        description: customInv.description,
+                        dueDate: customInv.dueDate || null,
+                        status: "Due",
+                        kind: "Custom",
+                      });
+                      setCustomInv({ description: "", amount: "", dueDate: "" });
+                      await allInvoices.refetch();
+                      try {
+                        const res = await notifyInvoice({ data: { invoiceId: created.id } });
+                        setSaved(
+                          res.ok
+                            ? `Invoice issued — payment due email sent to ${res.email}.`
+                            : `Invoice issued. ${res.error ?? ""}`,
+                        );
+                      } catch (err) {
+                        setSaved(
+                          `Invoice issued, but the email failed: ${err instanceof Error ? err.message : "unknown error"}`,
+                        );
+                      }
                     });
-                    setCustomInv({ description: "", amount: "", dueDate: "" });
-                    await allInvoices.refetch();
-                    try {
-                      const res = await notifyInvoice({ data: { invoiceId: created.id } });
-                      setSaved(
-                        res.ok
-                          ? `Invoice issued — payment due email sent to ${res.email}.`
-                          : `Invoice issued. ${res.error ?? ""}`,
-                      );
-                    } catch (err) {
-                      setSaved(
-                        `Invoice issued, but the email failed: ${err instanceof Error ? err.message : "unknown error"}`,
-                      );
-                    }
                   }}
                 >
                   <input
@@ -1130,7 +1307,7 @@ function AdminPage() {
                     aria-label="Due date"
                     className={field}
                   />
-                  <button type="submit" className={`${btn} sm:col-span-4`}>
+                  <button type="submit" disabled={working} className={`${btn} sm:col-span-4`}>
                     <Plus className="size-4" /> Issue custom invoice
                   </button>
                 </form>
@@ -1162,6 +1339,11 @@ function AdminPage() {
                           >
                             {i.status}
                           </span>
+                          {i.status === "Due" && <button type="button" className={ghostBtn} disabled={working}
+                            onClick={() => void run(async () => {
+                              const result = await notifyInvoice({ data: { invoiceId: i.id } });
+                              setSaved(result.ok ? "Invoice email sent." : result.error ?? "Could not send invoice email.");
+                            })}>Email invoice</button>}
                         </div>
                       </li>
                     ))}
@@ -1181,6 +1363,13 @@ function AdminPage() {
                   Photos are grouped by visit date. A note is optional — you can add or edit it
                   under each photo at any time.
                 </p>
+                <label className="mt-4 block max-w-md text-sm">
+                  Attach to an issue (optional)
+                  <select className={field} value={photoIssueId} onChange={(event) => setPhotoIssueId(event.target.value)}>
+                    <option value="">General property photo</option>
+                    {(openItems.data ?? []).map((issue) => <option key={issue.id} value={issue.id}>{issue.title}</option>)}
+                  </select>
+                </label>
                 <div className="mt-5 flex flex-wrap items-start gap-3">
                   <textarea
                     value={photoNote}
@@ -1262,7 +1451,7 @@ function AdminPage() {
                     setBusy(true);
                     setSaved(null);
                     try {
-                      await createClientFn({
+                      const client = await createClientFn({
                         data: {
                           fullName: nc.fullName,
                           email: nc.email,
@@ -1283,7 +1472,9 @@ function AdminPage() {
                         password: "",
                       });
                       setSaved("Client created — share their temporary password.");
-                      await Promise.all([profiles.refetch(), properties.refetch()]);
+                      const [, refreshed] = await Promise.all([profiles.refetch(), properties.refetch()]);
+                      const createdProperty = refreshed.data?.find((entry) => entry.owner_id === client.userId);
+                      if (createdProperty) setActiveId(createdProperty.id);
                     } catch (err) {
                       setSaved(err instanceof Error ? err.message : "Could not create client.");
                     } finally {
@@ -1347,6 +1538,8 @@ function AdminPage() {
                   <input
                     required
                     minLength={8}
+                    type="password"
+                    autoComplete="new-password"
                     value={nc.password}
                     onChange={(e) => setNc({ ...nc, password: e.target.value })}
                     placeholder="Temporary password (min 8)"
@@ -1364,8 +1557,11 @@ function AdminPage() {
                 <h2 id="directory" className={label}>
                   Client directory
                 </h2>
+                <input type="search" className={`${field} mt-4 max-w-md`} value={clientSearch}
+                  aria-label="Find a client" placeholder="Search by name, email, or property address"
+                  onChange={(event) => setClientSearch(event.target.value)} />
                 <div className="mt-5 space-y-3">
-                  {(profiles.data ?? []).map((p) => (
+                  {filteredProfiles.map((p) => (
                     <ClientRow
                       key={p.id}
                       profile={p}
@@ -1374,6 +1570,10 @@ function AdminPage() {
                         .map((o) => o.address)
                         .join(" · ")}
                       canDelete={!busy && p.id !== user?.id}
+                      {...(() => {
+                        const firstProperty = properties.data?.find((entry) => entry.owner_id === p.id);
+                        return firstProperty ? { onOpen: () => setActiveId(firstProperty.id) } : {};
+                      })()}
                       onSaved={async () => {
                         setSaved("Client updated.");
                         await profiles.refetch();
@@ -1393,8 +1593,10 @@ function AdminPage() {
                       }}
                     />
                   ))}
-                  {!profiles.data?.length && (
-                    <p className="text-sm text-muted-foreground">No clients yet.</p>
+                  {!profiles.isPending && !filteredProfiles.length && (
+                    <p className="text-sm text-muted-foreground">
+                      {clientSearch.trim() ? "No matching clients." : "No clients yet."}
+                    </p>
                   )}
                 </div>
               </section>
@@ -1422,25 +1624,23 @@ function AdminPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={async () => {
-                          await updateAppointment(a.id, {
-                            reminder_sent_at: new Date().toISOString(),
-                          });
-                          setSaved("Reminder logged for this appointment.");
-                          await allAppointments.refetch();
-                        }}
+                        disabled={working}
+                          onClick={() => void emailVisit(a.id)}
                         className={ghostBtn}
                       >
-                        {a.reminder_sent_at ? "Reminder sent" : "Send reminder"}
+                        Email visit details
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          await updateAppointment(a.id, { status: "Completed" });
-                          await addActivity(a.property_id, `${a.service} completed`);
-                          setSaved("Marked complete and logged to the client's activity feed.");
-                          await allAppointments.refetch();
-                        }}
+                        disabled={working}
+                          onClick={() => void run(async () => {
+                            await completeAppointment(a.id);
+                            setSaved("Visit completed and added to the client’s activity.");
+                            await Promise.all([
+                              allAppointments.refetch(),
+                              ...(property ? [propertyAppointments.refetch(), activity.refetch(), properties.refetch()] : []),
+                            ]);
+                          })}
                         className={ghostBtn}
                       >
                         Mark complete

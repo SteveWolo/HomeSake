@@ -57,7 +57,7 @@ export const adminCreateClient = createServerFn({ method: "POST" })
     }
     const userId = created.data.user.id;
 
-    await supabaseAdmin
+    const profile = await supabaseAdmin
       .from("profiles")
       .upsert({
         id: userId,
@@ -68,10 +68,16 @@ export const adminCreateClient = createServerFn({ method: "POST" })
         payment_status: data.paymentStatus,
       });
 
-    const property = await supabaseAdmin
+    const error = profile.error ?? (await supabaseAdmin
       .from("properties")
-      .insert({ owner_id: userId, address: data.address });
-    if (property.error) throw new Error(property.error.message);
+      .insert({ owner_id: userId, address: data.address })).error;
+    if (error) {
+      const cleanup = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (cleanup.error) {
+        throw new Error("The client was only partly created. Check the directory before retrying.");
+      }
+      throw new Error(error.message);
+    }
 
     return { userId };
   });
