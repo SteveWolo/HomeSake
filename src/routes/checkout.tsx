@@ -20,13 +20,13 @@ export const Route = createFileRoute("/checkout")({
   validateSearch: (search) => searchSchema.parse(search),
   head: () => ({
     meta: [
-      { title: "Membership Checkout — Home Harmony Hub" },
+      { title: "Membership Checkout — Homesake" },
       {
         name: "description",
         content:
-          "Complete your Home Harmony Hub membership: account details and secure Stripe card payment on one page. Your portal account is created once payment clears.",
+          "Complete your Homesake membership: account details and secure Stripe card payment on one page. Your portal account is created once payment clears.",
       },
-      { property: "og:title", content: "Membership Checkout — Home Harmony Hub" },
+      { property: "og:title", content: "Membership Checkout — Homesake" },
       {
         property: "og:description",
         content: "One-step membership checkout with secure recurring Stripe billing.",
@@ -286,8 +286,8 @@ function CheckoutPage() {
   return (
     <div className="min-h-screen bg-background px-6 py-12 lg:py-16">
       <div className="mx-auto max-w-6xl">
-        <Link to="/" className="inline-flex" aria-label="Home Harmony Hub — home">
-          <img src={logoUrl} alt="Home Harmony Hub logo" className="h-10 w-auto" />
+        <Link to="/" className="inline-flex" aria-label="Homesake — home">
+          <img src={logoUrl} alt="Homesake logo" className="h-10 w-auto" />
         </Link>
 
         {done ? (
@@ -396,9 +396,12 @@ function CheckoutPage() {
 
                 <p className="flex items-start gap-2 text-xs text-muted-foreground">
                   <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                  Card details go straight to Stripe — we never see or store your card number. Your
-                  membership renews automatically {annual ? "each year" : "each month"} and can be
-                  cancelled from your portal.
+                  <span>
+                    Stripe processes your card details. Your membership renews automatically{" "}
+                    {annual ? "each year" : "each month"}. Turn off renewal in your portal before
+                    your next billing date. Your membership stays active through the paid period.
+                    See the <Link to="/terms" className="underline">Membership Terms</Link>.
+                  </span>
                 </p>
               </div>
             </div>

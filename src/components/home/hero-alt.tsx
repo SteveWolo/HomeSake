@@ -50,7 +50,7 @@ export function HeroAlt() {
 
       <div className="mx-auto flex w-full max-w-7xl flex-col justify-center px-6 pt-[calc(6rem+50px)] pb-14 lg:px-10 lg:pt-[calc(6rem+50px)] lg:pb-12">
         <div className="max-w-2xl">
-          <h2
+          <h1
             id="hero-alt-title"
             className="font-display text-[clamp(2.5rem,5.6vw,4.75rem)] leading-[0.98] [text-shadow:0_2px_24px_color-mix(in_oklab,var(--color-background)_70%,transparent)]"
           >
@@ -59,7 +59,7 @@ export function HeroAlt() {
             <span className="text-brass-gradient italic">{hero.titleAccent}</span>
             <br />
             {hero.titleEnd}
-          </h2>
+          </h1>
           <p className="mt-7 max-w-lg text-lg leading-relaxed text-foreground/85 [text-shadow:0_1px_16px_color-mix(in_oklab,var(--color-background)_75%,transparent)]">
             {hero.subtitle}
           </p>
@@ -90,29 +90,31 @@ export function HeroAlt() {
             )}
           </div>
 
-          <div className="mt-12 inline-flex items-center gap-4">
+          {hero.trustHighlight && (
+            <div className="mt-12 inline-flex items-center gap-4">
 
-            <div className="flex items-center">
-              {hero.avatars.map((src, i) => (
-                <img
-                  key={`${src}-${i}`}
-                  src={src}
-                  alt="Home Harmony Hub member"
-                  width={512}
-                  height={512}
-                  loading="lazy"
-                  className={`size-11 rounded-full object-cover ring-2 ring-background/70 ${
-                    i > 0 ? "-ml-3" : ""
-                  }`}
-                />
-              ))}
+              <div className="flex items-center">
+                {hero.avatars.map((src, i) => (
+                  <img
+                    key={`${src}-${i}`}
+                    src={src}
+                    alt=""
+                    width={512}
+                    height={512}
+                    loading="lazy"
+                    className={`size-11 rounded-full object-cover ring-2 ring-background/70 ${
+                      i > 0 ? "-ml-3" : ""
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-sm text-foreground/90 [text-shadow:0_1px_14px_color-mix(in_oklab,var(--color-background)_80%,transparent)]">
+                {hero.trustPrefix}{" "}
+                <span className="font-semibold text-foreground">{hero.trustHighlight}</span>{" "}
+                {hero.trustSuffix}
+              </p>
             </div>
-            <p className="text-sm text-foreground/90 [text-shadow:0_1px_14px_color-mix(in_oklab,var(--color-background)_80%,transparent)]">
-              {hero.trustPrefix}{" "}
-              <span className="font-semibold text-foreground">{hero.trustHighlight}</span>{" "}
-              {hero.trustSuffix}
-            </p>
-          </div>
+          )}
         </div>
       </div>
 
