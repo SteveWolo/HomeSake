@@ -162,7 +162,7 @@ export const defaultFaqCategories: FaqCategory[] = [
     items: [
       {
         q: "Can I cancel my Homesake membership?",
-        a: "Yes. Homesake memberships can be canceled at any time. To prevent your next recurring membership charge and future scheduled membership service, cancellation should be submitted at least 24 hours before your next scheduled service visit, subject to the terms of your Membership Service Agreement.",
+        a: "Yes. Turn off renewal in your member portal before your next billing date. Your membership stays active through the end of the period you already paid for, including an annual term. The 24-hour notice applies to rescheduling or canceling an individual visit. See the Membership Terms for refund details.",
       },
       {
         q: "Do I have to sign a long-term contract?",

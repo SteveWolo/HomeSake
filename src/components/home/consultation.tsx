@@ -74,7 +74,7 @@ export function Consultation() {
     setFieldErrors({});
 
     if (!accessKey) {
-      setError("The contact form is not configured yet. Please call us instead.");
+      setError("The contact form is not configured yet. Please try again later.");
       return;
     }
 
@@ -85,8 +85,8 @@ export function Consultation() {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           access_key: accessKey,
-          subject: "New consultation request — Home Harmony Hub",
-          from_name: "Home Harmony Hub",
+          subject: "New consultation request — Homesake",
+          from_name: "Homesake",
           name: parsed.data.name,
           email: parsed.data.email,
           phone: parsed.data.phone,
@@ -141,13 +141,15 @@ export function Consultation() {
               ))}
             </div>
 
-            <a
-              href={consultation.phoneHref}
-              className="hairline mt-12 flex items-center gap-3 pt-6 text-foreground"
-            >
-              <PhoneCall className="size-4 text-primary" />
-              <span className="font-display text-2xl">{consultation.phoneLabel}</span>
-            </a>
+            {consultation.phoneLabel && consultation.phoneHref && (
+              <a
+                href={consultation.phoneHref}
+                className="hairline mt-12 flex items-center gap-3 pt-6 text-foreground"
+              >
+                <PhoneCall className="size-4 text-primary" />
+                <span className="font-display text-2xl">{consultation.phoneLabel}</span>
+              </a>
+            )}
           </div>
 
           <div className="panel rounded-sm p-8 sm:p-10">

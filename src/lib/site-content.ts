@@ -291,7 +291,7 @@ export const defaultSiteContent: SiteContent = {
   },
   header: {
     logo: logoUrl,
-    logoAlt: "Home Harmony Hub logo",
+    logoAlt: "Homesake logo",
     logoHref: "/",
     navLinks: [
       { label: "Services", href: "#services" },
@@ -306,22 +306,23 @@ export const defaultSiteContent: SiteContent = {
     loginHref: "/login",
   },
   hero: {
-    title: "Your Trusted Local",
-    titleAccent: "Home Management",
-    titleEnd: "& Care Experts",
+    title: "Routine maintenance",
+    titleAccent: "and home checks",
+    titleEnd: "in the South Elgin area",
     subtitle:
-      "One dedicated specialist, a vetted trade bench, and a proactive maintenance calendar — every inspection and repair handled before you have to ask.",
-    primaryCta: { label: "Schedule a Walkthrough", href: "#consultation" },
+      "We check your home, handle included upkeep, and document each visit. When something needs specialized work, we can help coordinate the right professional.",
+    primaryCta: { label: "Request a Free Consultation", href: "#consultation" },
     secondaryCta: { label: "Get a Free Consultation", href: "#consultation" },
     image: heroImage,
-    imageAlt: "Large luxury home exterior at dusk cared for by Home Harmony Hub",
+    imageAlt: "Large luxury home exterior at dusk cared for by Homesake",
     avatars: [avatar1, avatar2, avatar3],
-    trustPrefix: "Trusted by",
-    trustHighlight: "1,200+",
-    trustSuffix: "homeowners",
+    trustPrefix: "",
+    trustHighlight: "",
+    trustSuffix: "",
     video: {
       buttonLabel: "Watch how it works",
       src: "",
+      srcWebm: "",
       poster: "",
       title: "Inside a Homesake visit",
       description:
@@ -405,38 +406,15 @@ export const defaultSiteContent: SiteContent = {
   coverage: {
     eyebrow: "Coverage",
     title: "Are we on your street yet?",
-    body: "We operate in eight metros with a full contractor bench in each. Enter your ZIP to see availability and current onboarding time.",
+    body: "Based in South Elgin, Illinois. Check your ZIP code or request a free consultation to confirm service at your address.",
     placeholder: "Enter ZIP code",
     buttonLabel: "Check",
-    displayAreas: [
-      "Palo Alto, CA",
-      "Los Altos, CA",
-      "Beverly Hills, CA",
-      "Upper West Side, NY",
-      "Miami Beach, FL",
-      "Austin, TX",
-      "Lincoln Park, IL",
-      "Back Bay, MA",
-    ],
-    coveredAreas: [
-      { zip: "94301", name: "Palo Alto, CA" },
-      { zip: "94024", name: "Los Altos, CA" },
-      { zip: "90210", name: "Beverly Hills, CA" },
-      { zip: "10024", name: "Upper West Side, NY" },
-      { zip: "33139", name: "Miami Beach, FL" },
-      { zip: "78703", name: "Austin, TX" },
-      { zip: "60614", name: "Lincoln Park, IL" },
-      { zip: "02116", name: "Back Bay, MA" },
-    ],
-    waitlistAreas: [
-      { zip: "98004", name: "Bellevue, WA" },
-      { zip: "80302", name: "Boulder, CO" },
-      { zip: "30327", name: "Buckhead, GA" },
-    ],
-    coveredNote: "Membership can begin within 5 business days.",
-    waitlistNote: "Book a call to reserve a founding-member slot.",
-    noneNote:
-      "Not in our service map yet — but we place select homes through partner crews. Book a consultation and we'll tell you honestly.",
+    displayAreas: ["South Elgin, IL"],
+    coveredAreas: [{ zip: "60177", name: "South Elgin, IL" }],
+    waitlistAreas: [],
+    coveredNote: "Request a free consultation to confirm availability at your address.",
+    waitlistNote: "Request a consultation to ask about availability.",
+    noneNote: "If you’re near South Elgin, request a consultation so we can confirm coverage at your address.",
     invalidNote: "Please enter a valid 5-digit ZIP code.",
   },
   pricing: {
@@ -460,7 +438,7 @@ export const defaultSiteContent: SiteContent = {
         features: [
           "Seasonal maintenance calendar",
           "Vetted contractor bench access",
-          "Two supervised service visits / year",
+          "Quarterly scheduled home visits",
           "Digital home record & warranties",
           "Business-hours support line",
         ],
@@ -510,9 +488,9 @@ export const defaultSiteContent: SiteContent = {
       "Your estate manager joins the call",
       "Transparent pricing before you commit",
     ],
-    phoneLabel: "(800) 555-0142",
-    phoneHref: "tel:+18005550142",
-    web3formsAccessKey: "c1f77c9a-a05c-494b-b88e-57ea309e521a",
+    phoneLabel: "",
+    phoneHref: "",
+    web3formsAccessKey: "",
     propertyTypes: ["Primary residence", "Second home", "Multi-property portfolio"],
     callWindows: ["Morning (9–12)", "Afternoon (12–4)", "Evening (4–7)"],
     submitLabel: "Request my consultation",
@@ -571,7 +549,7 @@ export const defaultSiteContent: SiteContent = {
       },
       {
         heading: "Membership cancellation",
-        body: "Memberships may be canceled at any time. To prevent the next recurring charge and future scheduled service, cancellation must be submitted at least 24 hours before your next scheduled service visit. Cancellation does not retroactively refund services already performed or membership periods already provided, except where required by law. After cancellation takes effect, no additional recurring membership charges are made. Members who enrolled online are provided an online method of cancellation as required by law.",
+        body: "Members can turn off automatic renewal through the member portal before their next scheduled billing date. Membership remains active through the end of the paid billing period, including annual terms. Cancellation does not retroactively refund services already performed or membership periods already provided, except where required by law. The 24-hour visit cancellation notice applies separately to individual appointments.",
       },
       {
         heading: "Automatic renewal and recurring billing",
@@ -660,9 +638,9 @@ export const defaultSiteContent: SiteContent = {
     founderName: "Steven Woloszyk",
     founderRole: "Founder & CEO",
     founderBio:
-      "Built on a foundation of service and craftsmanship, Steven founded Homesake after years of dedicated service as a police officer and licensed general contractor. Having seen firsthand how neglected property maintenance leads to costly repairs, he created Homesake—a proactive home management system designed to protect your home's value and give homeowners absolute peace of mind.",
+      "Steven founded Homesake after 15 years with the St. Charles Police Department and experience owning and operating a commercial cleaning and maintenance business. He brings that focus on trust, accountability, and consistent follow-through to routine home care.",
     founderQuote:
-      "Your home is your largest investment. Our mission is to handle the details so you never have to worry about unexpected repairs again.",
+      "We help homeowners stay on top of routine upkeep and know what needs attention after each visit.",
     founderImage: craftImage,
     founderImageAlt: "Steven Woloszyk, founder of Homesake",
     valuesTitle: "What we stand for",
@@ -680,7 +658,7 @@ export const defaultSiteContent: SiteContent = {
       {
         icon: "Hammer",
         title: "Craftsmanship",
-        body: "Quality standards driven by professional general contracting experience.",
+        body: "Clear checklists, careful work, and a record of what was done.",
       },
     ],
     processEyebrow: "Our process & standards",
@@ -795,9 +773,9 @@ export const defaultSiteContent: SiteContent = {
       "Homesake checks the home, takes care of approved routine maintenance within our scope, documents what we observe, and helps coordinate the right professional when a larger or specialized job is needed.",
   },
   footer: {
-    brand: "Home Harmony Hub",
+    brand: "Homesake",
     blurb:
-      "A private membership for people who would rather enjoy their home than manage it. Licensed, insured, and quietly obsessive about detail.",
+      "Routine home maintenance, documented visits, and help coordinating specialized work.",
     columns: [
       {
         title: "Membership",
@@ -827,8 +805,8 @@ export const defaultSiteContent: SiteContent = {
         ],
       },
     ],
-    legalLeft: "© {year} Home Harmony Hub. All rights reserved.",
-    legalRight: "License #HHH-4471 · Bonded & insured",
+    legalLeft: "© {year} Homesake. All rights reserved.",
+    legalRight: "",
     creditPrefix: "Developed by",
     creditName: "Sitelora",
     creditHref: "https://sitelora.com/",
@@ -858,22 +836,92 @@ export function mergeContent<T>(base: T, saved: unknown): T {
 
 /** Fills in fields added after content was first saved (saved arrays win wholesale). */
 function normalize(content: SiteContent): SiteContent {
+  const sampleAreas = new Set([
+    "Palo Alto, CA", "Los Altos, CA", "Beverly Hills, CA", "Upper West Side, NY",
+    "Miami Beach, FL", "Austin, TX", "Lincoln Park, IL", "Back Bay, MA",
+    "Bellevue, WA", "Boulder, CO", "Buckhead, GA",
+  ]);
   const display = (content.coverage.displayAreas ?? []).filter(
-    (name) => typeof name === "string" && name.trim() !== "",
+    (name) => typeof name === "string" && name.trim() !== "" && !sampleAreas.has(name),
   );
+  const configuredAreas = content.coverage.coveredAreas.filter((area) => !sampleAreas.has(area.name));
+  const coveredAreas = !configuredAreas.length && content.coverage.coveredAreas.length
+    ? defaultSiteContent.coverage.coveredAreas
+    : configuredAreas;
+  const waitlistAreas = content.coverage.waitlistAreas.filter((area) => !sampleAreas.has(area.name));
+  const legacyHero = content.hero.title === "Your Trusted Local";
+  const placeholderPhone = content.consultation.phoneHref === "tel:+18005550142"
+    || content.consultation.phoneLabel === "(800) 555-0142";
   return {
     ...content,
+    hero: {
+      ...content.hero,
+      ...(legacyHero ? {
+        title: defaultSiteContent.hero.title,
+        titleAccent: defaultSiteContent.hero.titleAccent,
+        titleEnd: defaultSiteContent.hero.titleEnd,
+        subtitle: defaultSiteContent.hero.subtitle,
+      } : {}),
+      primaryCta: content.hero.primaryCta.label === "Schedule a Walkthrough" &&
+        content.hero.primaryCta.href === "#consultation"
+        ? defaultSiteContent.hero.primaryCta
+        : content.hero.primaryCta,
+      trustHighlight: content.hero.trustHighlight === "1,200+" ? "" : content.hero.trustHighlight,
+    },
+    consultation: {
+      ...content.consultation,
+      ...(placeholderPhone ? { phoneLabel: "", phoneHref: "" } : {}),
+    },
+    team: {
+      ...content.team,
+      founderBio: content.team.founderBio === "Built on a foundation of service and craftsmanship, Steven founded Homesake after years of dedicated service as a police officer and licensed general contractor. Having seen firsthand how neglected property maintenance leads to costly repairs, he created Homesake—a proactive home management system designed to protect your home's value and give homeowners absolute peace of mind."
+        ? defaultSiteContent.team.founderBio : content.team.founderBio,
+      founderQuote: content.team.founderQuote === "Your home is your largest investment. Our mission is to handle the details so you never have to worry about unexpected repairs again."
+        ? defaultSiteContent.team.founderQuote : content.team.founderQuote,
+      values: content.team.values.map((value) => value.body === "Quality standards driven by professional general contracting experience."
+        ? { ...value, body: "Clear checklists, careful work, and a record of what was done." } : value),
+    },
+    faq: {
+      ...content.faq,
+      categories: content.faq.categories.map((category) => ({
+        ...category,
+        items: category.items.map((item) => item.a === "Yes. Homesake memberships can be canceled at any time. To prevent your next recurring membership charge and future scheduled membership service, cancellation should be submitted at least 24 hours before your next scheduled service visit, subject to the terms of your Membership Service Agreement."
+          ? { ...item, a: "Yes. Turn off renewal in your member portal before your next billing date. Your membership stays active through the end of the period you already paid for, including an annual term. The 24-hour notice applies to rescheduling or canceling an individual visit. See the Membership Terms for refund details." } : item),
+      })),
+    },
+    terms: {
+      ...content.terms,
+      sections: content.terms.sections.map((section) => section.body === "Memberships may be canceled at any time. To prevent the next recurring charge and future scheduled service, cancellation must be submitted at least 24 hours before your next scheduled service visit. Cancellation does not retroactively refund services already performed or membership periods already provided, except where required by law. After cancellation takes effect, no additional recurring membership charges are made. Members who enrolled online are provided an online method of cancellation as required by law."
+        ? { ...section, body: "Members can turn off automatic renewal through the member portal before their next scheduled billing date. Membership remains active through the end of the paid billing period, including annual terms. Cancellation does not retroactively refund services already performed or membership periods already provided, except where required by law. The 24-hour visit cancellation notice applies separately to individual appointments." } : section),
+    },
+    footer: {
+      ...content.footer,
+      brand: content.footer.brand.replaceAll("Home Harmony Hub", "Homesake"),
+      legalLeft: content.footer.legalLeft.replaceAll("Home Harmony Hub", "Homesake"),
+      blurb: content.footer.blurb.includes("quietly obsessive about detail")
+        ? defaultSiteContent.footer.blurb : content.footer.blurb,
+      legalRight: content.footer.legalRight.includes("#HHH-4471") ? "" : content.footer.legalRight,
+    },
     coverage: {
       ...content.coverage,
+      ...(content.coverage.body === "We operate in eight metros with a full contractor bench in each. Enter your ZIP to see availability and current onboarding time." ? {
+        body: defaultSiteContent.coverage.body,
+        coveredNote: defaultSiteContent.coverage.coveredNote,
+        noneNote: defaultSiteContent.coverage.noneNote,
+      } : {}),
+      coveredAreas,
+      waitlistAreas,
       displayAreas: (display.length
         ? display
-        : content.coverage.coveredAreas.map((a) => a.name).filter((n) => n?.trim())
+        : coveredAreas.map((area) => area.name)
       ).slice(0, 10),
     },
     pricing: {
       ...content.pricing,
       tiers: content.pricing.tiers.map((t) => ({
         ...t,
+        features: t.features.map((feature) => feature === "Two supervised service visits / year"
+          ? "Quarterly scheduled home visits" : feature),
         annualMonthly:
           typeof t.annualMonthly === "number" && t.annualMonthly > 0
             ? t.annualMonthly

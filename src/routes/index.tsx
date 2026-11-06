@@ -16,17 +16,17 @@ import { SiteFooter } from "@/components/home/site-footer";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Home Harmony Hub — Luxury Home Management Membership" },
+      { title: "Homesake | Home Maintenance in South Elgin, IL" },
       {
         name: "description",
         content:
-          "A private membership for luxury homes: a dedicated estate manager, vetted contractors, proactive maintenance, and 24/7 emergency response.",
+          "Routine home maintenance, documented home checks, and contractor coordination in South Elgin and nearby communities.",
       },
-      { property: "og:title", content: "Home Harmony Hub — Luxury Home Management Membership" },
+      { property: "og:title", content: "Homesake | Home Maintenance in South Elgin, IL" },
       {
         property: "og:description",
         content:
-          "One estate manager, a vetted contractor bench, and a maintenance calendar that runs before something breaks.",
+          "Routine home maintenance, documented home checks, and contractor coordination in South Elgin and nearby communities.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -59,8 +59,8 @@ function Index() {
       <SiteHeader />
       <main>
         <HeroAlt />
-        <HomeHealth />
         <Services />
+        <HomeHealth />
         <Coverage />
         <Pricing />
         <Consultation />
