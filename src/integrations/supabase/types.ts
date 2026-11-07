@@ -428,6 +428,27 @@ export type Database = {
         }
         Relationships: []
       }
+      visit_paid_extras: {
+        Row: {
+          id: string
+          appointment_id: string
+          scope: string
+          amount_cents: number
+          status: string
+          created_at: string
+          responded_at: string | null
+          invoice_id: string | null
+        }
+        Insert: { appointment_id: string; scope: string; amount_cents: number }
+        Update: { invoice_id?: string | null }
+        Relationships: [{
+          foreignKeyName: "visit_paid_extras_appointment_id_fkey"
+          columns: ["appointment_id"]
+          isOneToOne: false
+          referencedRelation: "appointments"
+          referencedColumns: ["id"]
+        }]
+      }
       visit_report_drafts: {
         Row: { appointment_id: string; report: Json; staff_notes: string; revision: string }
         Insert: { appointment_id: string; report: Json; staff_notes?: string; revision?: string }
@@ -481,6 +502,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      respond_to_paid_extra: {
+        Args: { quote_id: string; decision: string }
+        Returns: undefined
+      }
+      invoice_paid_extra: {
+        Args: { quote_id: string }
+        Returns: string
+      }
       save_visit_workspace: {
         Args: { visit_id: string; expected_revision: string | null; public_report: Json; private_notes: string; publish: boolean }
         Returns: string

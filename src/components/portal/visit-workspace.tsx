@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 
+import { AdminPaidExtras } from "@/components/portal/paid-extras";
 import { VisitReportContent } from "@/components/portal/visit-report";
 import { defaultBenefitModules } from "@/lib/membership-benefits-content";
 import { sendPublishedVisitReportEmail } from "@/lib/notifications.functions";
@@ -26,8 +27,13 @@ export function VisitWorkspace({ visit, plan, requests, onPublished }: {
   if (draft.isError) return <p role="alert">Could not load this visit. <button type="button"
     className="underline" onClick={() => void draft.refetch()}>Retry</button></p>;
   const published = readVisitReport(visit.published_report);
-  return <VisitEditor visit={visit} plan={plan ?? null} requests={requests} initial={draft.data} published={published}
-    onPublished={onPublished} />;
+  return (
+    <>
+      <AdminPaidExtras visit={visit} requests={requests} />
+      <VisitEditor visit={visit} plan={plan ?? null} requests={requests} initial={draft.data} published={published}
+        onPublished={onPublished} />
+    </>
+  );
 }
 
 function VisitEditor({ visit, plan, requests, initial, published, onPublished }: {
