@@ -1,3 +1,4 @@
+import { MaintenanceRecord } from "@/components/portal/maintenance-record";
 import { resolvePortalTarget } from "@/lib/portal-target";
 import { IssueHistory } from "@/components/portal/issue-progress";
 import { parsePortalSearch } from "@/lib/portal-links";
@@ -88,11 +89,12 @@ const priorityStyles: Record<string, string> = {
   Low: "border-border text-muted-foreground",
 };
 
-type Tab = "overview" | "appointments" | "membership";
+type Tab = "overview" | "appointments" | "maintenance" | "membership";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Dashboard" },
   { id: "appointments", label: "Visits & service requests" },
+  { id: "maintenance", label: "Maintenance record" },
   { id: "membership", label: "Membership & invoices" },
 ];
 
@@ -737,6 +739,8 @@ function DashboardPage() {
                     <p className="mt-2 text-sm text-muted-foreground">{latestReport.service} · {formatDateTime(latestReport.scheduled_at)}</p>
                     {latestSummary && <p className="mt-3 whitespace-pre-wrap break-words text-sm">{latestSummary}</p>}
                     <PublishedVisitReport visit={latestReport} expanded={false} />
+                    <button type="button" className="mt-3 mr-4 text-sm text-primary underline"
+                      onClick={() => setTab("maintenance")}>View maintenance record</button>
                     <Link to="/dashboard" onClick={() => setTab("appointments")} search={{ visit: latestReport.id }} className="mt-3 inline-block text-sm text-primary underline">Open full visit</Link>
                   </>
                 ) : appointments.isPending ? <p role="status" className="mt-3 text-sm">Loading your latest report…</p>
@@ -977,6 +981,11 @@ function DashboardPage() {
                 </ul>
               </section>
             </>
+          )}
+
+          {tab === "maintenance" && property && (
+            <MaintenanceRecord key={property.id} propertyId={property.id} visits={appointments.data ?? []}
+              visitsLoading={appointments.isPending} visitsFailed={appointments.isError} />
           )}
 
           {tab === "appointments" && property && (
