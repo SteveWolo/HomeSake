@@ -1,3 +1,4 @@
+import { MaintenanceRecord } from "@/components/portal/maintenance-record";
 import { AdminIssueProgress, IssueHistory } from "@/components/portal/issue-progress";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -938,6 +939,9 @@ function AdminPage() {
                   Send update notification to client
                 </button>
               </section>
+
+              <MaintenanceRecord key={property.id} propertyId={property.id} visits={propertyAppointments.data ?? []}
+                visitsLoading={propertyAppointments.isPending} visitsFailed={propertyAppointments.isError} admin />
 
               <section className="panel rounded-sm p-6" aria-labelledby="update-property">
                 <h2 id="update-property" className={label}>

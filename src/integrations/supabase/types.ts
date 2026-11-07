@@ -232,6 +232,12 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      maintenance_records: {
+        Row: { property_id: string; category: string; location: string; specifications: string; notes: string }
+        Insert: { property_id: string; category: string; location?: string; specifications?: string; notes?: string }
+        Update: { location?: string; specifications?: string; notes?: string }
+        Relationships: []
+      }
       open_items: {
         Row: {
           recommended_action: string | null
