@@ -48,6 +48,10 @@ export type Database = {
       }
       appointments: {
         Row: {
+          visit_report: string | null
+          confirmation_sent_at: string | null
+          day_before_sent_at: string | null
+          notification_version: string
           created_at: string
           id: string
           notes: string | null
@@ -59,6 +63,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          visit_report?: string | null
+          confirmation_sent_at?: string | null
+          day_before_sent_at?: string | null
+          notification_version?: string
           created_at?: string
           id?: string
           notes?: string | null
@@ -70,6 +78,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          visit_report?: string | null
+          confirmation_sent_at?: string | null
+          day_before_sent_at?: string | null
+          notification_version?: string
           created_at?: string
           id?: string
           notes?: string | null
@@ -213,6 +225,7 @@ export type Database = {
       }
       open_items: {
         Row: {
+          recommended_action: string | null
           created_at: string
           detail: string | null
           id: string
@@ -223,6 +236,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          recommended_action?: string | null
           created_at?: string
           detail?: string | null
           id?: string
@@ -233,6 +247,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          recommended_action?: string | null
           created_at?: string
           detail?: string | null
           id?: string
@@ -350,6 +365,7 @@ export type Database = {
       }
       property_photos: {
         Row: {
+          issue_id: string | null
           created_at: string
           id: string
           note: string | null
@@ -358,6 +374,7 @@ export type Database = {
           uploaded_by: string
         }
         Insert: {
+          issue_id?: string | null
           created_at?: string
           id?: string
           note?: string | null
@@ -366,6 +383,7 @@ export type Database = {
           uploaded_by: string
         }
         Update: {
+          issue_id?: string | null
           created_at?: string
           id?: string
           note?: string | null
@@ -382,6 +400,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      service_requests: {
+        Row: {
+          id: string
+          property_id: string
+          appointment_id: string | null
+          kind: string
+          details: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          property_id: string
+          appointment_id?: string | null
+          kind: string
+          details: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          status?: string
+        }
+        Relationships: []
       }
       site_content: {
         Row: {
@@ -430,6 +472,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_homesake_visit: {
+        Args: { visit_id: string }
+        Returns: undefined
+      }
+      review_service_request: {
+        Args: { request_id: string; decision: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

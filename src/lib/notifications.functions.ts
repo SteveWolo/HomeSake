@@ -47,7 +47,7 @@ export const sendPropertyUpdateEmail = createServerFn({ method: "POST" })
 
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [activity, items, photos] = await Promise.all([
+    const [activity, items, photos, visits] = await Promise.all([
       supabaseAdmin
         .from("activity_items")
         .select("title, occurred_at")
@@ -69,11 +69,16 @@ export const sendPropertyUpdateEmail = createServerFn({ method: "POST" })
         .gte("created_at", since)
         .order("created_at", { ascending: false })
         .limit(12),
+      supabaseAdmin.from("appointments").select("scheduled_at")
+        .eq("property_id", property.id).in("status", ["Scheduled", "Rescheduled"])
+        .gt("scheduled_at", new Date().toISOString()).order("scheduled_at").limit(1),
     ]);
 
     const activityRows = activity.data ?? [];
     const itemRows = items.data ?? [];
     const photoRows = photos.data ?? [];
+    if (visits.error) throw new Error(visits.error.message);
+    const nextVisit = visits.data[0]?.scheduled_at;
 
     const bodyHtml = [
       statHtml([
@@ -81,8 +86,9 @@ export const sendPropertyUpdateEmail = createServerFn({ method: "POST" })
         ["Home health score", `${property.health_score}/100`],
         [
           "Next visit",
-          property.next_visit_at
-            ? new Date(property.next_visit_at).toLocaleString("en-US", {
+          nextVisit
+            ? new Date(nextVisit).toLocaleString("en-US", {
+                timeZone: "America/Chicago",
                 month: "short",
                 day: "numeric",
                 year: "numeric",
@@ -267,4 +273,18 @@ export const sendInvoiceDueEmail = createServerFn({ method: "POST" })
     });
 
     return { ok: true as const, email: owner.email };
+  });
+
+/** Send the latest schedule immediately, or resend visit details on demand. */
+export const sendVisitDetailsEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ appointmentId: z.string().uuid(), confirmation: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { emailVisit } = await import("@/lib/visit-email.server");
+    const { data: visit, error } = await supabaseAdmin.from("appointments").select("*")
+      .eq("id", data.appointmentId).single();
+    if (error) throw new Error(error.message);
+    return { sent: await emailVisit(visit, data.confirmation ? "confirmation" : "manual") };
   });

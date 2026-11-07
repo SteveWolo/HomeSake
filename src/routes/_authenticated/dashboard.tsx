@@ -50,6 +50,7 @@ import {
   scoreLabel,
 } from "@/lib/portal";
 import { PhotoLightbox } from "@/components/portal/photo-lightbox";
+import { ServiceRequests } from "@/components/portal/service-requests";
 import { RescheduleModal } from "@/components/portal/reschedule-modal";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -83,7 +84,7 @@ type Tab = "overview" | "appointments" | "membership";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Dashboard" },
-  { id: "appointments", label: "Appointments & history" },
+  { id: "appointments", label: "Visits & service requests" },
   { id: "membership", label: "Membership & invoices" },
 ];
 
@@ -442,11 +443,13 @@ function DashboardPage() {
 
   const now = Date.now();
   const upcoming = (appointments.data ?? []).filter(
-    (a) => a.status !== "Completed" && new Date(a.scheduled_at).getTime() >= now,
-  );
-  const past = (appointments.data ?? []).filter(
-    (a) => a.status === "Completed" || new Date(a.scheduled_at).getTime() < now,
-  );
+    (visit) => ["Scheduled", "Rescheduled"].includes(visit.status) && Date.parse(visit.scheduled_at) >= now,
+  ).reverse();
+  const past = (appointments.data ?? []).filter((visit) => !upcoming.includes(visit));
+  const useLegacyVisit = appointments.isSuccess && appointments.data.length === 0 &&
+    Boolean(property?.next_visit_at && Date.parse(property.next_visit_at) >= now);
+  const nextVisitAt = upcoming[0]?.scheduled_at ?? (useLegacyVisit ? property?.next_visit_at : null);
+  const nextVisitName = upcoming[0]?.service ?? (useLegacyVisit ? property?.next_visit_note : null);
 
   const state = profile.data ? membershipState(profile.data) : "active";
 
@@ -586,6 +589,11 @@ function DashboardPage() {
 
           {tab === "overview" && property && (
             <>
+              <nav aria-label="Dashboard quick actions" className="flex flex-wrap gap-3 text-sm text-primary">
+                <button type="button" className="underline" onClick={() => setTab("appointments")}>See visits and notes</button>
+                <button type="button" className="underline" onClick={() => setTab("appointments")}>Request a service change</button>
+                <a href="#open-items" className="underline">See issues needing attention</a>
+              </nav>
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                 <div className="panel flex flex-col items-start gap-4 rounded-sm p-6 sm:flex-row sm:items-center sm:gap-6">
                   <ScoreRing score={property.health_score} />
@@ -614,12 +622,10 @@ function DashboardPage() {
                       Next visit
                     </p>
                     <p className="font-display mt-4 text-2xl">
-                      {formatDateTime(upcoming[0]?.scheduled_at ?? property.next_visit_at)}
+                      {formatDateTime(nextVisitAt ?? null)}
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {upcoming[0]?.service ??
-                        property.next_visit_note ??
-                        "Your manager will confirm the scope."}
+                      {nextVisitName ?? "Your Homesake team will confirm the next visit."}
                     </p>
                   </div>
                 </div>
@@ -677,7 +683,7 @@ function DashboardPage() {
 
                 <section className="panel rounded-sm p-6" aria-labelledby="open-items">
                   <h2 id="open-items" className={label}>
-                    Urgent repairs &amp; recommendations
+                    Needs attention
                   </h2>
                   <ul className="mt-5 space-y-3">
                     {(openItems.data ?? [])
@@ -690,8 +696,19 @@ function DashboardPage() {
                           <div>
                             <p className="text-sm font-semibold">{o.title}</p>
                             {o.detail && (
-                              <p className="mt-1 text-xs text-muted-foreground">{o.detail}</p>
+                              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground">{o.detail}</p>
                             )}
+                            {o.recommended_action && (
+                              <p className="mt-2 whitespace-pre-wrap break-words text-sm">
+                                <span className="font-semibold">Recommended action:</span> {o.recommended_action}
+                              </p>
+                            )}
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {(photos.data ?? []).filter((photo) => photo.issue_id === o.id && photo.url).map((photo, index) => (
+                                <button key={photo.id} type="button" className="text-sm text-primary underline"
+                                  onClick={() => setLightbox(photo)}>View issue photo {index + 1}</button>
+                              ))}
+                            </div>
                           </div>
                           <span
                             className={`shrink-0 rounded-full border px-3 py-1 text-[11px] tracking-[0.1em] uppercase ${
@@ -818,20 +835,21 @@ function DashboardPage() {
           {tab === "appointments" && property && (
             <div className="grid gap-6 lg:grid-cols-2">
               <section className="panel rounded-sm p-6" aria-labelledby="upcoming">
-                <h2 id="upcoming" className={label}>
-                  Upcoming visits
-                </h2>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 id="upcoming" className={label}>Upcoming visits</h2>
+                  {upcoming.length > 0 && <button type="button" className="text-sm text-primary underline"
+                    onClick={() => setRescheduleOpen(true)}>Reschedule a visit</button>}
+                </div>
                 <ul className="mt-5 space-y-3">
                   {upcoming.map((a) => (
                     <li
                       key={a.id}
                       className="rounded-sm border border-border bg-background/40 px-4 py-4"
                     >
-                      <p className="text-sm font-semibold">{a.service}</p>
-                      <p className="mt-1 text-xs text-primary">{formatDateTime(a.scheduled_at)}</p>
-                      {a.notes && (
-                        <p className="mt-2 text-xs text-muted-foreground">{a.notes}</p>
-                      )}
+                      <p className="text-xs font-semibold text-primary">{formatDateTime(a.scheduled_at)}</p>
+                      <p className="mt-1 text-sm font-semibold">{a.service}</p>
+                      {a.notes && <p className="mt-2 whitespace-pre-wrap text-sm">{a.notes}</p>}
+                      {a.visit_report && <p className="mt-2 whitespace-pre-wrap text-sm">{a.visit_report}</p>}
                     </li>
                   ))}
                   {!upcoming.length && (
@@ -842,19 +860,21 @@ function DashboardPage() {
 
               <section className="panel rounded-sm p-6" aria-labelledby="past-visits">
                 <h2 id="past-visits" className={label}>
-                  Past appointments
+                  Visit history &amp; notes
                 </h2>
                 <ul className="mt-5 space-y-3">
                   {past.map((a) => (
                     <li key={a.id} className="flex gap-3">
                       <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" />
                       <div>
-                        <p className="text-sm">{a.service}</p>
                         <p className="text-xs text-muted-foreground">
                           {formatDateTime(a.scheduled_at)} · {a.status}
                         </p>
-                        {a.notes && (
-                          <p className="mt-1 text-xs text-muted-foreground">{a.notes}</p>
+                        <p className="mt-1 text-sm font-semibold">{a.service}</p>
+                        {(a.visit_report || a.notes) && (
+                          <p className="mt-2 whitespace-pre-wrap break-words text-sm">
+                            {a.visit_report ?? a.notes}
+                          </p>
                         )}
                       </div>
                     </li>
@@ -864,6 +884,9 @@ function DashboardPage() {
                   )}
                 </ul>
               </section>
+              <div className="lg:col-span-2">
+                <ServiceRequests key={property.id} propertyId={property.id} visits={upcoming} />
+              </div>
             </div>
           )}
 

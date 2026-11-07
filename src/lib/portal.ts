@@ -28,6 +28,7 @@ export type OpenItem = {
   property_id: string;
   title: string;
   detail: string | null;
+  recommended_action?: string | null;
   priority: string;
   resolved: boolean;
 };
@@ -36,6 +37,7 @@ export type PropertyPhoto = {
   id: string;
   property_id: string;
   storage_path: string;
+  issue_id?: string | null;
   note: string | null;
   created_at: string;
 };
@@ -108,11 +110,14 @@ export async function addOpenItem(
   title: string,
   detail: string,
   priority: string,
+  recommendedAction: string,
 ) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("open_items")
-    .insert({ property_id: propertyId, title, detail, priority });
+    .insert({ property_id: propertyId, title, detail, priority, recommended_action: recommendedAction })
+    .select("id").single();
   if (error) throw new Error(error.message);
+  return data.id;
 }
 
 export async function resolveOpenItem(id: string, resolved: boolean) {
@@ -147,6 +152,7 @@ export async function uploadPhoto(opts: {
   userId: string;
   file: File;
   note: string;
+  issueId?: string;
 }) {
   const optimized = await compressImage(opts.file);
   const path = `${opts.propertyId}/${crypto.randomUUID()}.webp`;
@@ -161,8 +167,12 @@ export async function uploadPhoto(opts: {
     uploaded_by: opts.userId,
     storage_path: path,
     note: opts.note || null,
+    ...(opts.issueId ? { issue_id: opts.issueId } : {}),
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+    throw new Error(error.message);
+  }
 
   return optimized;
 }
@@ -248,6 +258,9 @@ export type Appointment = {
   status: string;
   notes: string | null;
   reminder_sent_at: string | null;
+  visit_report?: string | null;
+  confirmation_sent_at?: string | null;
+  day_before_sent_at?: string | null;
 };
 
 export type Invoice = {
@@ -312,22 +325,62 @@ export async function createAppointment(input: {
   service: string;
   notes: string;
 }) {
-  const { error } = await supabase.from("appointments").insert({
+  const { data, error } = await supabase.from("appointments").insert({
     property_id: input.propertyId,
     scheduled_at: new Date(input.scheduledAt).toISOString(),
     service: input.service,
     notes: input.notes || null,
-  });
+  }).select("id").single();
   if (error) throw new Error(error.message);
+  return data.id;
 }
 
-export async function updateAppointment(id: string, patch: Partial<Appointment>) {
-  const { error } = await supabase.from("appointments").update(patch).eq("id", id);
+export async function updateAppointment(id: string, patch: Partial<Appointment>, propertyId?: string) {
+  const query = supabase.from("appointments").update(patch).eq("id", id);
+  const { data, error } = await (propertyId ? query.eq("property_id", propertyId) : query)
+    .select("id").maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("This visit is no longer available.");
+}
+
+export async function completeAppointment(id: string) {
+  const { error } = await supabase.rpc("complete_homesake_visit", { visit_id: id });
   if (error) throw new Error(error.message);
 }
 
 export async function deleteAppointment(id: string) {
   const { error } = await supabase.from("appointments").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export const serviceRequestKinds = ["Add service", "Cancel service", "Cancel visit", "Next visit request"] as const;
+type ServiceRequestKind = (typeof serviceRequestKinds)[number];
+
+export async function listServiceRequests(propertyId?: string) {
+  const query = supabase.from("service_requests").select("*").order("created_at", { ascending: false });
+  const { data, error } = await (propertyId ? query.eq("property_id", propertyId) : query);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function submitServiceRequest(input: {
+  propertyId: string;
+  appointmentId: string | null;
+  kind: ServiceRequestKind;
+  details: string;
+}) {
+  const { error } = await supabase.from("service_requests").insert({
+    property_id: input.propertyId,
+    appointment_id: input.appointmentId,
+    kind: input.kind,
+    details: input.details.trim(),
+  });
+  if (error?.code === "23505") throw new Error("There is already a pending request to cancel this visit.");
+  if (error) throw new Error(error.message);
+}
+
+export async function reviewServiceRequest(id: string, status: "Approved" | "Declined") {
+  const { error } = await supabase.rpc("review_service_request", { request_id: id, decision: status });
   if (error) throw new Error(error.message);
 }
 

@@ -11,7 +11,7 @@ export function siteUrl() {
   return (process.env["SITE_URL"] || "https://yourhomesake.com").replace(/\/$/, "");
 }
 
-export async function sendEmail(input: { to: string; subject: string; html: string }) {
+export async function sendEmail(input: { to: string; subject: string; html: string; idempotencyKey?: string }) {
   const key = process.env["RESEND_API_KEY"];
   if (!key) throw new Error("Email is not configured yet (missing RESEND_API_KEY).");
 
@@ -20,6 +20,7 @@ export async function sendEmail(input: { to: string; subject: string; html: stri
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
+      ...(input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : {}),
     },
     body: JSON.stringify({ from: FROM, to: [input.to], subject: input.subject, html: input.html }),
   });
