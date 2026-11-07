@@ -21,6 +21,7 @@ import type { LucideIcon } from "lucide-react";
 
 import logoUrl from "@/assets/homesake-logo.png";
 import { SiteEditor } from "@/components/admin/site-editor";
+import { VisitWorkspace } from "@/components/portal/visit-workspace";
 import { PhotoLightbox } from "@/components/portal/photo-lightbox";
 import {
   sendInvoiceDueEmail,
@@ -60,7 +61,6 @@ import {
   reviewServiceRequest,
   membershipState,
   resolveOpenItem,
-  updateAppointment,
   updateInvoice,
   updatePhotoNote,
   updateProfile,
@@ -362,7 +362,7 @@ function AdminPage() {
   const [issueFiles, setIssueFiles] = useState<File[]>([]);
   const issueFileRef = useRef<HTMLInputElement>(null);
   const [photoIssueId, setPhotoIssueId] = useState("");
-  const [report, setReport] = useState({ id: "", text: "" });
+  const [reportVisitId, setReportVisitId] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const workingRef = useRef(false);
   const [photoNote, setPhotoNote] = useState("");
@@ -490,7 +490,6 @@ function AdminPage() {
 
   useEffect(() => {
     setAppt({ at: "", service: "", notes: "" });
-    setReport({ id: "", text: "" });
     setItem({ title: "", detail: "", action: "", priority: "Low" });
     setIssueFiles([]);
     setPhotoIssueId("");
@@ -499,6 +498,13 @@ function AdminPage() {
     setActivityTitle("");
     setCustomInv({ description: "", amount: "", dueDate: "" });
   }, [activeId]);
+
+  const reportVisit = (propertyAppointments.data ?? []).find((visit) =>
+    visit.id === reportVisitId && visit.status !== "Cancelled");
+  const openVisitWorkspace = (visitId: string) => {
+    setReportVisitId(visitId);
+    window.requestAnimationFrame(() => document.getElementById("visit-notes")?.scrollIntoView({ block: "start" }));
+  };
 
   const signOut = async () => {
     await queryClient.cancelQueries();
@@ -734,7 +740,7 @@ function AdminPage() {
               {property ? (
                 <>
                   <a href="#schedule" className={ghostBtn}>Schedule visit</a>
-                  <a href="#visit-notes" className={ghostBtn}>Publish visit notes</a>
+                  <a href="#visit-notes" className={ghostBtn}>Visit workspace</a>
                   <a href="#recommendations" className={ghostBtn}>Report an issue</a>
                   <a href="#custom-invoice" className={ghostBtn}>Send invoice</a>
                   <a href="#service-requests" className={ghostBtn}>Client requests</a>
@@ -939,6 +945,9 @@ function AdminPage() {
                         {a.notes && <p className="text-xs text-muted-foreground">{a.notes}</p>}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" className={ghostBtn} onClick={() => openVisitWorkspace(a.id)}>
+                          Open visit workspace
+                        </button>
                         <button
                           type="button"
                           disabled={working}
@@ -985,34 +994,19 @@ function AdminPage() {
                 </ul>
 
                 <div className="mt-8 border-t border-border pt-6">
-                  <h3 id="visit-notes" className={label}>Publish notes for a visit</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">Clients see these notes under the visit date.</p>
-                  <form className="mt-4 space-y-3" onSubmit={(event) => {
-                    event.preventDefault();
-                    if (!report.id || !report.text.trim()) return;
-                    void run(async () => {
-                      await updateAppointment(report.id, { visit_report: report.text.trim() }, property.id);
-                      setSaved("Visit notes published to the client dashboard.");
-                      setReport({ id: "", text: "" });
-                      await propertyAppointments.refetch();
-                    });
-                  }}>
-                    <select required aria-label="Visit for notes" className={field} value={report.id}
-                      onChange={(event) => {
-                        const visit = propertyAppointments.data?.find((a) => a.id === event.target.value);
-                        setReport({ id: visit?.id ?? "", text: visit?.visit_report ?? "" });
-                      }}>
-                      <option value="">Choose a visit by date</option>
-                      {(propertyAppointments.data ?? []).filter((a) => a.status !== "Cancelled").map((a) => (
-                        <option key={a.id} value={a.id}>{formatDateTime(a.scheduled_at)} · {a.service}</option>
-                      ))}
-                    </select>
-                    <textarea required maxLength={4000} aria-label="Visit notes for the client"
-                      placeholder="Work completed, observations, and next steps"
-                      className={`${field} min-h-28 py-3`} value={report.text}
-                      onChange={(event) => setReport({ ...report, text: event.target.value })} />
-                    <button type="submit" disabled={working} className={btn}>Publish visit notes</button>
-                  </form>
+                  <h3 id="visit-notes" className={label}>Visit workspace</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">Choose a visit to work through its checklist and prepare a client report.</p>
+                  <select aria-label="Visit for report" className={`${field} mt-4`} value={reportVisit?.id ?? ""}
+                    onChange={(event) => setReportVisitId(event.target.value || null)}>
+                    <option value="">Choose a visit by date</option>
+                    {(propertyAppointments.data ?? []).filter((visit) => visit.status !== "Cancelled").map((visit) => (
+                      <option key={visit.id} value={visit.id}>{formatDateTime(visit.scheduled_at)} · {visit.service}</option>
+                    ))}
+                  </select>
+                  {reportVisit && <VisitWorkspace key={reportVisit.id} visit={reportVisit}
+                    plan={ownerProfile?.membership_tier ?? null}
+                    requests={(requests.data ?? []).filter((request) => request.appointment_id === reportVisit.id)}
+                    onPublished={() => propertyAppointments.refetch()} />}
                 </div>
 
                 <h3 className={`${label} mt-8`}>Appointment history</h3>
@@ -1622,6 +1616,11 @@ function AdminPage() {
                       {a.notes && <p className="text-xs text-muted-foreground">{a.notes}</p>}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      <button type="button" className={ghostBtn} onClick={() => {
+                        setTab("clients");
+                        setActiveId(a.property_id);
+                        openVisitWorkspace(a.id);
+                      }}>Open visit workspace</button>
                       <button
                         type="button"
                         disabled={working}

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   BadgeDollarSign,
@@ -50,10 +50,15 @@ import {
   scoreLabel,
 } from "@/lib/portal";
 import { PhotoLightbox } from "@/components/portal/photo-lightbox";
+import { VisitReportContent } from "@/components/portal/visit-report";
+import { readVisitReport } from "@/lib/visit-workspace";
 import { ServiceRequests } from "@/components/portal/service-requests";
 import { RescheduleModal } from "@/components/portal/reschedule-modal";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  validateSearch: (search: Record<string, unknown>): { visit?: string } =>
+    typeof search["visit"] === "string" && /^[a-f0-9-]{36}$/i.test(search["visit"])
+      ? { visit: search["visit"] } : {},
   head: () => ({
     meta: [
       { title: "Member Dashboard — Home Harmony Hub" },
@@ -243,11 +248,29 @@ function HomeNotesCard({
 }
 
 
+function PublishedVisitReport({ visit, expanded }: {
+  visit: import("@/lib/portal").Appointment;
+  expanded: boolean;
+}) {
+  const report = readVisitReport(visit.published_report);
+  if (!report) return visit.visit_report ? (
+    <p className="mt-2 whitespace-pre-wrap break-words text-sm">{visit.visit_report}</p>
+  ) : null;
+  return (
+    <details className="mt-3" open={expanded || undefined}>
+      <summary className="cursor-pointer text-sm font-semibold text-primary">View visit report</summary>
+      <div className="mt-3"><VisitReportContent report={report} /></div>
+    </details>
+  );
+}
+
 function DashboardPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<Tab>("overview");
+  const { visit: linkedVisitId } = Route.useSearch();
+  const [tab, setTab] = useState<Tab>(linkedVisitId ? "appointments" : "overview");
+  const openedLink = useRef<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [cancelNotice, setCancelNotice] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
@@ -293,6 +316,24 @@ function DashboardPage() {
 
   const property = properties.data?.find((p) => p.id === activeId) ?? null;
 
+  const linkedVisit = useQuery({
+    queryKey: ["linked-visit", user?.id, linkedVisitId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("appointments").select("property_id")
+        .eq("id", linkedVisitId!).maybeSingle();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: Boolean(user && linkedVisitId),
+  });
+  useEffect(() => {
+    if (linkedVisitId && linkedVisit.data && openedLink.current !== linkedVisitId) {
+      openedLink.current = linkedVisitId;
+      setActiveId(linkedVisit.data.property_id);
+      setTab("appointments");
+    }
+  }, [linkedVisitId, linkedVisit.data]);
+
   const activity = useQuery({
     queryKey: ["activity", property?.id],
     queryFn: () => listActivity(property!.id),
@@ -315,6 +356,11 @@ function DashboardPage() {
     queryFn: () => listAppointments(property!.id),
     enabled: !!property,
   });
+  useEffect(() => {
+    if (tab !== "appointments" || !linkedVisitId || !appointments.data) return;
+    document.getElementById(`visit-${linkedVisitId}`)?.scrollIntoView({ block: "nearest" });
+  }, [tab, linkedVisitId, appointments.data]);
+
   const tasks = useQuery({
     queryKey: ["maintenance-tasks", property?.id],
     queryFn: () => listMaintenanceTasks(property!.id),
@@ -450,6 +496,8 @@ function DashboardPage() {
     Boolean(property?.next_visit_at && Date.parse(property.next_visit_at) >= now);
   const nextVisitAt = upcoming[0]?.scheduled_at ?? (useLegacyVisit ? property?.next_visit_at : null);
   const nextVisitName = upcoming[0]?.service ?? (useLegacyVisit ? property?.next_visit_note : null);
+
+  const latestReport = (appointments.data ?? []).find((visit) => Boolean(visit.published_report || visit.visit_report));
 
   const state = profile.data ? membershipState(profile.data) : "active";
 
@@ -594,6 +642,17 @@ function DashboardPage() {
                 <button type="button" className="underline" onClick={() => setTab("appointments")}>Request a service change</button>
                 <a href="#open-items" className="underline">See issues needing attention</a>
               </nav>
+              {latestReport && (
+                <section className="panel flex flex-wrap items-center justify-between gap-3 rounded-sm p-5">
+                  <div>
+                    <h2 className="font-semibold">Latest visit report</h2>
+                    <p className="text-sm text-muted-foreground">{latestReport.service} · {formatDateTime(latestReport.scheduled_at)}</p>
+                  </div>
+                  <Link to="/dashboard" search={{ visit: latestReport.id }} className="text-sm text-primary underline">
+                    View report
+                  </Link>
+                </section>
+              )}
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                 <div className="panel flex flex-col items-start gap-4 rounded-sm p-6 sm:flex-row sm:items-center sm:gap-6">
                   <ScoreRing score={property.health_score} />
@@ -844,12 +903,13 @@ function DashboardPage() {
                   {upcoming.map((a) => (
                     <li
                       key={a.id}
+                      id={`visit-${a.id}`}
                       className="rounded-sm border border-border bg-background/40 px-4 py-4"
                     >
                       <p className="text-xs font-semibold text-primary">{formatDateTime(a.scheduled_at)}</p>
                       <p className="mt-1 text-sm font-semibold">{a.service}</p>
                       {a.notes && <p className="mt-2 whitespace-pre-wrap text-sm">{a.notes}</p>}
-                      {a.visit_report && <p className="mt-2 whitespace-pre-wrap text-sm">{a.visit_report}</p>}
+                      <PublishedVisitReport visit={a} expanded={linkedVisitId === a.id} />
                     </li>
                   ))}
                   {!upcoming.length && (
@@ -864,18 +924,15 @@ function DashboardPage() {
                 </h2>
                 <ul className="mt-5 space-y-3">
                   {past.map((a) => (
-                    <li key={a.id} className="flex gap-3">
+                    <li key={a.id} id={`visit-${a.id}`} className="flex gap-3">
                       <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" />
                       <div>
                         <p className="text-xs text-muted-foreground">
                           {formatDateTime(a.scheduled_at)} · {a.status}
                         </p>
                         <p className="mt-1 text-sm font-semibold">{a.service}</p>
-                        {(a.visit_report || a.notes) && (
-                          <p className="mt-2 whitespace-pre-wrap break-words text-sm">
-                            {a.visit_report ?? a.notes}
-                          </p>
-                        )}
+                        {a.notes && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{a.notes}</p>}
+                        <PublishedVisitReport visit={a} expanded={linkedVisitId === a.id} />
                       </div>
                     </li>
                   ))}

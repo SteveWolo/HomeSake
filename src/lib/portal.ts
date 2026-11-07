@@ -259,6 +259,7 @@ export type Appointment = {
   notes: string | null;
   reminder_sent_at: string | null;
   visit_report?: string | null;
+  published_report?: import("@/integrations/supabase/types").Json | null;
   confirmation_sent_at?: string | null;
   day_before_sent_at?: string | null;
 };

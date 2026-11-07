@@ -48,6 +48,7 @@ export type Database = {
       }
       appointments: {
         Row: {
+          published_report: Json | null
           visit_report: string | null
           confirmation_sent_at: string | null
           day_before_sent_at: string | null
@@ -63,6 +64,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          published_report?: Json | null
           visit_report?: string | null
           confirmation_sent_at?: string | null
           day_before_sent_at?: string | null
@@ -78,6 +80,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          published_report?: Json | null
           visit_report?: string | null
           confirmation_sent_at?: string | null
           day_before_sent_at?: string | null
@@ -425,6 +428,12 @@ export type Database = {
         }
         Relationships: []
       }
+      visit_report_drafts: {
+        Row: { appointment_id: string; report: Json; staff_notes: string; revision: string }
+        Insert: { appointment_id: string; report: Json; staff_notes?: string; revision?: string }
+        Update: { report?: Json; staff_notes?: string; revision?: string }
+        Relationships: []
+      }
       site_content: {
         Row: {
           content: Json
@@ -472,6 +481,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_visit_workspace: {
+        Args: { visit_id: string; expected_revision: string | null; public_report: Json; private_notes: string; publish: boolean }
+        Returns: string
+      }
       complete_homesake_visit: {
         Args: { visit_id: string }
         Returns: undefined
