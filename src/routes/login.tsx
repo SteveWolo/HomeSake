@@ -1,3 +1,4 @@
+import { parsePortalSearch } from "@/lib/portal-links";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
@@ -7,9 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveRole } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>): { visit?: string } =>
-    typeof search["visit"] === "string" && /^[a-f0-9-]{36}$/i.test(search["visit"])
-      ? { visit: search["visit"] } : {},
+  validateSearch: parsePortalSearch,
   head: () => ({
     meta: [
       { name: "robots", content: "noindex" },

@@ -1,3 +1,4 @@
+import { portalPath } from "@/lib/portal-links";
 /**
  * Client email notifications (Resend).
  *
@@ -124,7 +125,7 @@ export const sendPropertyUpdateEmail = createServerFn({ method: "POST" })
         intro: `Hi ${owner.full_name || "there"}, here's a summary of the latest work, reports, and photos we've added for your home.`,
         bodyHtml,
         ctaLabel: "View Property Report",
-        ctaHref: `${siteUrl()}/dashboard`,
+        ctaHref: `${siteUrl()}${portalPath({ property: property.id })}`,
       }),
     });
 
@@ -268,7 +269,7 @@ export const sendInvoiceDueEmail = createServerFn({ method: "POST" })
           ],
         ]),
         ctaLabel: "Pay Invoice Now",
-        ctaHref: `${siteUrl()}/pay/${invoice.id}`,
+        ctaHref: `${siteUrl()}${portalPath({ invoice: invoice.id })}`,
       }),
     });
 
@@ -321,8 +322,84 @@ export const sendPublishedVisitReportEmail = createServerFn({ method: "POST" })
           ["Visit date", new Date(visit.scheduled_at).toLocaleDateString("en-US", { timeZone: "America/Chicago" })],
         ]),
         ctaLabel: "View your report",
-        ctaHref: `${siteUrl()}/dashboard?visit=${data.appointmentId}`,
+        ctaHref: `${siteUrl()}${portalPath({ visit: data.appointmentId })}`,
       }),
       idempotencyKey: `visit-report/${data.appointmentId}/${report["publishedAt"]}`,
+    });
+  });
+
+
+export const sendPaidExtraQuoteEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ quoteId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { sendEmail, layout, siteUrl, statHtml } = await import("@/lib/email.server");
+    const { data: quote, error } = await supabaseAdmin.from("visit_paid_extras")
+      .select("*").eq("id", data.quoteId).single();
+    if (error) throw new Error(error.message);
+    if (quote.status !== "Pending") throw new Error("This quote has already been answered or withdrawn.");
+    const { data: visit, error: visitError } = await supabaseAdmin.from("appointments")
+      .select("property_id,status,service,scheduled_at").eq("id", quote.appointment_id).single();
+    if (visitError) throw new Error(visitError.message);
+    if (!["Scheduled", "Rescheduled"].includes(visit.status)) throw new Error("This visit is no longer open for approval.");
+    const { data: property, error: propertyError } = await supabaseAdmin.from("properties")
+      .select("owner_id,address").eq("id", visit.property_id).single();
+    if (propertyError) throw new Error(propertyError.message);
+    const { data: owner, error: ownerError } = await supabaseAdmin.from("profiles")
+      .select("email").eq("id", property.owner_id).single();
+    if (ownerError) throw new Error(ownerError.message);
+    if (!owner.email) throw new Error("This client has no email address on file.");
+    await sendEmail({
+      to: owner.email,
+      subject: "Your Homesake quote is ready to review",
+      html: layout({
+        title: "Review your paid extra",
+        intro: "Sign in to review the scope and price, then approve or decline the quote.",
+        bodyHtml: statHtml([
+          ["Property", property.address],
+          ["Scope", quote.scope],
+          ["Total price", money(quote.amount_cents)],
+          ["Visit", new Date(visit.scheduled_at).toLocaleString("en-US", { timeZone: "America/Chicago", timeZoneName: "short" })],
+        ]),
+        ctaLabel: "Review your quote",
+        ctaHref: `${siteUrl()}${portalPath({ quote: quote.id })}`,
+      }),
+      idempotencyKey: `paid-extra-quote/${quote.id}`,
+    });
+  });
+
+export const sendIssueProgressEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ issueId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { sendEmail, layout, siteUrl, statHtml } = await import("@/lib/email.server");
+    const { data: issue, error } = await supabaseAdmin.from("open_items")
+      .select("*").eq("id", data.issueId).single();
+    if (error) throw new Error(error.message);
+    const { data: property, error: propertyError } = await supabaseAdmin.from("properties")
+      .select("owner_id,address").eq("id", issue.property_id).single();
+    if (propertyError) throw new Error(propertyError.message);
+    const { data: owner, error: ownerError } = await supabaseAdmin.from("profiles")
+      .select("email").eq("id", property.owner_id).single();
+    if (ownerError) throw new Error(ownerError.message);
+    if (!owner.email) throw new Error("This client has no email address on file.");
+    await sendEmail({
+      to: owner.email,
+      subject: "An update on your Homesake issue",
+      html: layout({
+        title: "Your issue has an update",
+        intro: "Sign in to see the latest progress, notes, and photos for this issue.",
+        bodyHtml: statHtml([
+          ["Property", property.address], ["Issue", issue.title], ["Status", issue.progress_status],
+          ["Update", issue.progress_note || issue.recommended_action || "View the issue in your portal."],
+        ]),
+        ctaLabel: "View issue progress",
+        ctaHref: `${siteUrl()}${portalPath({ issue: issue.id })}`,
+      }),
+      idempotencyKey: `issue-progress/${issue.id}/${issue.updated_at}`,
     });
   });

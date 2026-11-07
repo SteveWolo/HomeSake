@@ -226,6 +226,12 @@ export type Database = {
           },
         ]
       }
+      issue_updates: {
+        Row: { id: string; issue_id: string; status: string; note: string | null; created_at: string }
+        Insert: { issue_id: string; status: string; note?: string | null }
+        Update: never
+        Relationships: []
+      }
       open_items: {
         Row: {
           recommended_action: string | null
@@ -234,6 +240,8 @@ export type Database = {
           id: string
           priority: string
           property_id: string
+          progress_status: string
+          progress_note: string | null
           resolved: boolean
           title: string
           updated_at: string
@@ -245,6 +253,8 @@ export type Database = {
           id?: string
           priority?: string
           property_id: string
+          progress_status?: string
+          progress_note?: string | null
           resolved?: boolean
           title: string
           updated_at?: string
@@ -256,6 +266,8 @@ export type Database = {
           id?: string
           priority?: string
           property_id?: string
+          progress_status?: string
+          progress_note?: string | null
           resolved?: boolean
           title?: string
           updated_at?: string

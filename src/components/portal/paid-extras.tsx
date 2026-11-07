@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 
-import { sendInvoiceDueEmail } from "@/lib/notifications.functions";
+import { sendInvoiceDueEmail, sendPaidExtraQuoteEmail } from "@/lib/notifications.functions";
 import {
   invoicePaidExtra, listVisitExtras, respondToPaidExtra, sendPaidExtra, type PaidExtra,
 } from "@/lib/paid-extras";
@@ -31,6 +31,7 @@ export function AdminPaidExtras({ visit, requests }: {
 }) {
   const queryClient = useQueryClient();
   const emailInvoice = useServerFn(sendInvoiceDueEmail);
+  const emailQuote = useServerFn(sendPaidExtraQuoteEmail);
   const queryKey = ["visit-paid-extras", visit.id];
   const quotes = useQuery({ queryKey, queryFn: () => listVisitExtras(visit.id), refetchInterval: 30_000 });
   const [scope, setScope] = useState("");
@@ -85,6 +86,13 @@ export function AdminPaidExtras({ visit, requests }: {
         {quotes.data?.map((quote) => (
           <li key={quote.id} className="rounded-sm border border-border p-3">
             <QuoteSummary quote={quote} />
+            {quote.status === "Pending" && canQuoteVisit(visit) && (
+              <button type="button" className={`${button} mt-3 mr-2`} disabled={action.isPending}
+                onClick={() => action.mutate(async () => {
+                  await emailQuote({ data: { quoteId: quote.id } });
+                  setNotice("Quote email sent.");
+                })}>Email quote</button>
+            )}
             {quote.status === "Pending" && (
               <button type="button" className={`${button} mt-3`} disabled={action.isPending}
                 onClick={() => action.mutate(async () => {
@@ -142,7 +150,7 @@ export function ClientPaidExtras({ visit, quotes, onResponse }: {
     <section className="mt-3 space-y-2" aria-label="Paid extras">
       <h3 className="text-sm font-semibold">Paid extras</h3>
       {quotes.map((quote) => (
-        <div key={quote.id} className="rounded-sm border border-border p-3">
+        <div key={quote.id} id={`quote-${quote.id}`} tabIndex={-1} className="rounded-sm border border-border p-3">
           <QuoteSummary quote={quote} />
           {quote.status === "Pending" && canQuoteVisit(visit) && (
             confirmation?.id === quote.id ? (

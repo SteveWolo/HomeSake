@@ -1,3 +1,6 @@
+import { resolvePortalTarget } from "@/lib/portal-target";
+import { IssueHistory } from "@/components/portal/issue-progress";
+import { parsePortalSearch } from "@/lib/portal-links";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -58,9 +61,7 @@ import { ServiceRequests } from "@/components/portal/service-requests";
 import { RescheduleModal } from "@/components/portal/reschedule-modal";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  validateSearch: (search: Record<string, unknown>): { visit?: string } =>
-    typeof search["visit"] === "string" && /^[a-f0-9-]{36}$/i.test(search["visit"])
-      ? { visit: search["visit"] } : {},
+  validateSearch: parsePortalSearch,
   head: () => ({
     meta: [
       { title: "Member Dashboard — Home Harmony Hub" },
@@ -270,8 +271,11 @@ function DashboardPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { visit: linkedVisitId } = Route.useSearch();
-  const [tab, setTab] = useState<Tab>(linkedVisitId ? "appointments" : "overview");
+  const search = Route.useSearch();
+  const linkedVisitId = search.visit;
+  const targetKey = JSON.stringify(search);
+  const hasTarget = Object.keys(search).length > 0;
+  const [tab, setTab] = useState<Tab>(search.invoice ? "membership" : (search.visit || search.quote) ? "appointments" : "overview");
   const openedLink = useRef<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [cancelNotice, setCancelNotice] = useState<string | null>(null);
@@ -324,23 +328,23 @@ function DashboardPage() {
     refetchInterval: 30_000,
   });
 
-  const linkedVisit = useQuery({
-    queryKey: ["linked-visit", user?.id, linkedVisitId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("appointments").select("property_id")
-        .eq("id", linkedVisitId!).maybeSingle();
-      if (error) throw new Error(error.message);
-      return data;
-    },
-    enabled: Boolean(user && linkedVisitId),
+  const linkedTarget = useQuery({
+    queryKey: ["portal-target", user?.id, search],
+    queryFn: () => resolvePortalTarget(search),
+    enabled: Boolean(user && hasTarget),
   });
   useEffect(() => {
-    if (linkedVisitId && linkedVisit.data && openedLink.current !== linkedVisitId) {
-      openedLink.current = linkedVisitId;
-      setActiveId(linkedVisit.data.property_id);
-      setTab("appointments");
+    if (!hasTarget) {
+      openedLink.current = null;
+      return;
     }
-  }, [linkedVisitId, linkedVisit.data]);
+    const target = linkedTarget.data;
+    if (!target || openedLink.current === targetKey) return;
+    openedLink.current = targetKey;
+    if (target.propertyId) setActiveId(target.propertyId);
+    setTab(target.tab);
+    if (search.invoice) setPayingId(search.invoice);
+  }, [hasTarget, linkedTarget.data, targetKey, search.invoice]);
 
   const activity = useQuery({
     queryKey: ["activity", property?.id],
@@ -351,6 +355,7 @@ function DashboardPage() {
     queryKey: ["open-items", property?.id],
     queryFn: () => listOpenItems(property!.id),
     enabled: !!property,
+    refetchInterval: 30_000,
   });
   const [lightbox, setLightbox] = useState<PhotoWithUrl | null>(null);
 
@@ -365,9 +370,12 @@ function DashboardPage() {
     enabled: !!property,
   });
   useEffect(() => {
-    if (tab !== "appointments" || !linkedVisitId || !appointments.data) return;
-    document.getElementById(`visit-${linkedVisitId}`)?.scrollIntoView({ block: "nearest" });
-  }, [tab, linkedVisitId, appointments.data]);
+    const target = linkedTarget.data;
+    if (!target || tab !== target.tab || (target.propertyId && property?.id !== target.propertyId)) return;
+    const element = document.getElementById(target.elementId);
+    element?.scrollIntoView({ block: "nearest" });
+    element?.focus({ preventScroll: true });
+  }, [tab, property?.id, linkedTarget.data, appointments.data, extras.data, openItems.data, invoices.data]);
 
   const tasks = useQuery({
     queryKey: ["maintenance-tasks", property?.id],
@@ -380,6 +388,14 @@ function DashboardPage() {
     enabled: !!user,
   });
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [requestFocus, setRequestFocus] = useState(false);
+  useEffect(() => {
+    if (!requestFocus || tab !== "appointments" || !property) return;
+    const heading = document.getElementById("request-service");
+    heading?.scrollIntoView({ block: "nearest" });
+    heading?.parentElement?.querySelector("textarea")?.focus({ preventScroll: true });
+    setRequestFocus(false);
+  }, [requestFocus, tab, property?.id]);
   /**
    * Every routine job an admin logs bumps the property counter, so the metric
    * covers both the maintenance checklist and posted visit reports.
@@ -430,6 +446,9 @@ function DashboardPage() {
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "activity_items" }, () => {
         void queryClient.invalidateQueries({ queryKey: ["activity"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "open_items" }, () => {
+        void queryClient.invalidateQueries({ queryKey: ["open-items"] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "maintenance_tasks" }, () => {
         void queryClient.invalidateQueries({ queryKey: ["maintenance-tasks"] });
@@ -508,6 +527,11 @@ function DashboardPage() {
   const pendingExtras = extras.data?.filter((quote) => quote.status === "Pending" &&
     (appointments.data ?? []).some((visit) => visit.id === quote.appointment_id && canQuoteVisit(visit))) ?? [];
   const latestReport = (appointments.data ?? []).find((visit) => Boolean(visit.published_report || visit.visit_report));
+
+  const attentionInvoices = (invoices.data ?? []).filter((invoice) =>
+    invoice.status === "Due" && (!invoice.property_id || invoice.property_id === property?.id));
+  const attentionIssues = (openItems.data ?? []).filter((issue) => !issue.resolved);
+  const latestSummary = latestReport ? readVisitReport(latestReport.published_report)?.summary || latestReport.visit_report : null;
 
   const state = profile.data ? membershipState(profile.data) : "active";
 
@@ -631,6 +655,13 @@ function DashboardPage() {
           </h1>
 
 
+          {hasTarget && linkedTarget.isPending && <p role="status" className="text-sm">Opening your item…</p>}
+          {hasTarget && (linkedTarget.isError || (linkedTarget.isSuccess && !linkedTarget.data)) && (
+            <p role="alert" className="rounded-sm border border-border p-4 text-sm">
+              This item is unavailable. Check your link or contact Homesake.
+            </p>
+          )}
+
           {loading || properties.isLoading ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> Loading your home data…
@@ -647,28 +678,72 @@ function DashboardPage() {
 
           {tab === "overview" && property && (
             <>
-              <nav aria-label="Dashboard quick actions" className="flex flex-wrap gap-3 text-sm text-primary">
-                <button type="button" className="underline" onClick={() => setTab("appointments")}>See visits and notes</button>
-                {pendingExtras.length > 0 && (
-                  <button type="button" className="font-semibold text-primary underline" onClick={() => setTab("appointments")}>
-                    Review paid extras ({pendingExtras.length})
-                  </button>
-                )}
-                <button type="button" className="underline" onClick={() => setTab("appointments")}>Request a service change</button>
-                <a href="#open-items" className="underline">See issues needing attention</a>
-              </nav>
-              {latestReport && (
-                <section className="panel flex flex-wrap items-center justify-between gap-3 rounded-sm p-5">
-                  <div>
-                    <h2 className="font-semibold">Latest visit report</h2>
-                    <p className="text-sm text-muted-foreground">{latestReport.service} · {formatDateTime(latestReport.scheduled_at)}</p>
-                  </div>
-                  <Link to="/dashboard" search={{ visit: latestReport.id }} className="text-sm text-primary underline">
-                    View report
-                  </Link>
-                </section>
-              )}
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              <section id="client-home" tabIndex={-1} className="panel rounded-sm p-6" aria-labelledby="next-visit-heading">
+                <p className={label}>Your home, taken care of</p>
+                <h2 id="next-visit-heading" className="font-display mt-3 text-2xl">Your next visit</h2>
+                {appointments.isPending ? <p role="status" className="mt-3 text-sm">Loading your schedule…</p> :
+                  appointments.isError ? <p role="alert" className="mt-3 text-sm">Could not load your schedule. Try refreshing.</p> : (
+                    <>
+                      <p className="mt-3 text-lg font-semibold">{formatDateTime(nextVisitAt ?? null)}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{nextVisitName || "We’ll confirm the date and planned service with you."}</p>
+                      {upcoming[0]?.notes && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{upcoming[0].notes}</p>}
+                    </>
+                  )}
+                <div className="mt-4 flex flex-wrap gap-3 text-sm text-primary">
+                  {upcoming[0] && <Link to="/dashboard" onClick={() => setTab("appointments")} search={{ visit: upcoming[0].id }} className="underline">View visit details</Link>}
+                  {upcoming.length > 0 && <button type="button" className="underline" onClick={() => setRescheduleOpen(true)}>Request a schedule change</button>}
+                  <button type="button" className="underline" onClick={() => { setTab("appointments"); setRequestFocus(true); }}>Request extra work</button>
+                </div>
+              </section>
+
+              <section className="panel rounded-sm p-6" aria-labelledby="client-attention">
+                <h2 id="client-attention" className="font-display text-xl">Needs your attention</h2>
+                {(extras.isPending || invoices.isPending || openItems.isPending) &&
+                  <p role="status" className="mt-3 text-sm">Checking your updates…</p>}
+                {(extras.isError || invoices.isError || openItems.isError) &&
+                  <p role="alert" className="mt-3 text-sm">Some updates could not be loaded. Try refreshing.</p>}
+                <ul className="mt-3 space-y-3">
+                  {pendingExtras.map((quote) => (
+                    <li key={quote.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
+                      <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Quote for {formatMoney(quote.amount_cents)}</p>
+                        <p className="break-words text-sm text-muted-foreground">{quote.scope}</p></div>
+                      <Link to="/dashboard" onClick={() => setTab("appointments")} search={{ quote: quote.id }} className="text-sm text-primary underline">Review quote</Link>
+                    </li>
+                  ))}
+                  {attentionInvoices.map((invoice) => (
+                    <li key={invoice.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
+                      <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{formatMoney(invoice.amount_cents)} due</p>
+                        <p className="break-words text-sm text-muted-foreground">{invoice.description}</p></div>
+                      <Link to="/dashboard" onClick={() => setTab("membership")} search={{ invoice: invoice.id }} className="text-sm text-primary underline">View invoice</Link>
+                    </li>
+                  ))}
+                  {attentionIssues.map((issue) => (
+                    <li key={issue.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
+                      <div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{issue.title}</p>
+                        <p className="text-sm text-muted-foreground">{issue.progress_status}</p></div>
+                      <Link to="/dashboard" onClick={() => setTab("overview")} search={{ issue: issue.id }} className="text-sm text-primary underline">View issue</Link>
+                    </li>
+                  ))}
+                </ul>
+                {extras.isSuccess && invoices.isSuccess && openItems.isSuccess &&
+                  !pendingExtras.length && !attentionInvoices.length && !attentionIssues.length &&
+                  <p className="mt-3 text-sm text-muted-foreground">You’re up to date. There are no pending quotes, invoices, or open issues for this home.</p>}
+              </section>
+
+              <section className="panel rounded-sm p-6" aria-labelledby="latest-report-heading">
+                <h2 id="latest-report-heading" className="font-display text-xl">Latest visit report</h2>
+                {latestReport ? (
+                  <>
+                    <p className="mt-2 text-sm text-muted-foreground">{latestReport.service} · {formatDateTime(latestReport.scheduled_at)}</p>
+                    {latestSummary && <p className="mt-3 whitespace-pre-wrap break-words text-sm">{latestSummary}</p>}
+                    <PublishedVisitReport visit={latestReport} expanded={false} />
+                    <Link to="/dashboard" onClick={() => setTab("appointments")} search={{ visit: latestReport.id }} className="mt-3 inline-block text-sm text-primary underline">Open full visit</Link>
+                  </>
+                ) : appointments.isPending ? <p role="status" className="mt-3 text-sm">Loading your latest report…</p>
+                  : appointments.isError ? <p role="alert" className="mt-3 text-sm">Could not load your latest report.</p>
+                  : <p className="mt-3 text-sm text-muted-foreground">Your published report will appear here after a visit.</p>}
+              </section>
+              <div className="grid gap-6 md:grid-cols-3">
                 <div className="panel flex flex-col items-start gap-4 rounded-sm p-6 sm:flex-row sm:items-center sm:gap-6">
                   <ScoreRing score={property.health_score} />
                   <div className="min-w-0">
@@ -685,21 +760,6 @@ function DashboardPage() {
                         day: "numeric",
                         year: "numeric",
                       })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className={card}>
-                  <div>
-                    <p className={label}>
-                      <CalendarDays className="size-3.5 text-primary" />
-                      Next visit
-                    </p>
-                    <p className="font-display mt-4 text-2xl">
-                      {formatDateTime(nextVisitAt ?? null)}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {nextVisitName ?? "Your Homesake team will confirm the next visit."}
                     </p>
                   </div>
                 </div>
@@ -765,10 +825,13 @@ function DashboardPage() {
                       .map((o) => (
                         <li
                           key={o.id}
+                          id={`issue-${o.id}`}
+                          tabIndex={-1}
                           className="flex items-start justify-between gap-4 rounded-sm border border-border bg-background/40 px-4 py-4"
                         >
                           <div>
                             <p className="text-sm font-semibold">{o.title}</p>
+                            <p className="mt-1 text-xs font-semibold text-primary">{o.progress_status}</p>
                             {o.detail && (
                               <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground">{o.detail}</p>
                             )}
@@ -777,10 +840,11 @@ function DashboardPage() {
                                 <span className="font-semibold">Recommended action:</span> {o.recommended_action}
                               </p>
                             )}
+                            <IssueHistory issue={o} />
                             <div className="mt-2 flex flex-wrap gap-2">
                               {(photos.data ?? []).filter((photo) => photo.issue_id === o.id && photo.url).map((photo, index) => (
                                 <button key={photo.id} type="button" className="text-sm text-primary underline"
-                                  onClick={() => setLightbox(photo)}>View issue photo {index + 1}</button>
+                                  onClick={() => setLightbox(photo)}>View issue photo {index + 1} · {formatDateTime(photo.created_at)}</button>
                               ))}
                             </div>
                           </div>
@@ -892,10 +956,19 @@ function DashboardPage() {
                     .map((o) => (
                       <li
                         key={o.id}
-                        className="flex items-center gap-3 text-sm text-muted-foreground"
+                        id={`issue-${o.id}`}
+                        tabIndex={-1}
+                        className="rounded-sm border border-border p-3 text-sm text-muted-foreground"
                       >
                         <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
-                        <span className="line-through">{o.title}</span>
+                        <span className="font-semibold">{o.title} · Resolved</span>
+                        <IssueHistory issue={o} />
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(photos.data ?? []).filter((photo) => photo.issue_id === o.id && photo.url).map((photo, index) => (
+                            <button key={photo.id} type="button" className="text-sm text-primary underline"
+                              onClick={() => setLightbox(photo)}>View issue photo {index + 1} · {formatDateTime(photo.created_at)}</button>
+                          ))}
+                        </div>
                       </li>
                     ))}
                   {!openItems.data?.filter((o) => o.resolved).length && (
@@ -919,6 +992,7 @@ function DashboardPage() {
                     <li
                       key={a.id}
                       id={`visit-${a.id}`}
+                      tabIndex={-1}
                       className="rounded-sm border border-border bg-background/40 px-4 py-4"
                     >
                       <p className="text-xs font-semibold text-primary">{formatDateTime(a.scheduled_at)}</p>
@@ -942,7 +1016,7 @@ function DashboardPage() {
                 </h2>
                 <ul className="mt-5 space-y-3">
                   {past.map((a) => (
-                    <li key={a.id} id={`visit-${a.id}`} className="flex gap-3">
+                    <li key={a.id} id={`visit-${a.id}`} tabIndex={-1} className="flex gap-3">
                       <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" />
                       <div>
                         <p className="text-xs text-muted-foreground">
@@ -1120,6 +1194,8 @@ function DashboardPage() {
                   {(invoices.data ?? []).map((inv) => (
                     <li
                       key={inv.id}
+                      id={`invoice-${inv.id}`}
+                      tabIndex={-1}
                       className="rounded-sm border border-border bg-background/40 px-4 py-3"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">

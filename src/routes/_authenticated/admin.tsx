@@ -1,3 +1,4 @@
+import { AdminIssueProgress, IssueHistory } from "@/components/portal/issue-progress";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -61,7 +62,6 @@ import {
   listServiceRequests,
   reviewServiceRequest,
   membershipState,
-  resolveOpenItem,
   updateInvoice,
   updatePhotoNote,
   updateProfile,
@@ -1295,9 +1295,9 @@ function AdminPage() {
                     {(openItems.data ?? []).map((o) => (
                       <li
                         key={o.id}
-                        className="flex items-start justify-between gap-3 rounded-sm border border-border bg-background/40 px-4 py-3"
+                        className="flex flex-wrap items-start justify-between gap-3 rounded-sm border border-border bg-background/40 px-4 py-3"
                       >
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p
                             className={`text-sm font-semibold ${
                               o.resolved ? "line-through opacity-60" : ""
@@ -1310,20 +1310,12 @@ function AdminPage() {
                           )}
                           {o.recommended_action && <p className="mt-1 text-sm">Recommended: {o.recommended_action}</p>}
                           <p className="mt-1 text-[11px] uppercase text-muted-foreground">
-                            {o.priority === "High" ? "Urgent repair" : `${o.priority} priority`}
+                            {o.progress_status} · {o.priority === "High" ? "Urgent repair" : `${o.priority} priority`}
                           </p>
+                          <IssueHistory issue={o} />
+                          <AdminIssueProgress key={o.updated_at} issue={o} onSaved={() => openItems.refetch()} />
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await resolveOpenItem(o.id, !o.resolved);
-                              await openItems.refetch();
-                            }}
-                            className={ghostBtn}
-                          >
-                            {o.resolved ? "Reopen" : "Resolve"}
-                          </button>
                           <button
                             type="button"
                             aria-label="Delete item"

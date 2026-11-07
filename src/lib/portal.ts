@@ -31,6 +31,10 @@ export type OpenItem = {
   recommended_action?: string | null;
   priority: string;
   resolved: boolean;
+  progress_status: string;
+  progress_note: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type PropertyPhoto = {
