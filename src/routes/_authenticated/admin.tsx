@@ -14,6 +14,7 @@ import {
   LogOut,
   Plus,
   Receipt,
+  Sun,
   Trash2,
   Users,
 } from "lucide-react";
@@ -66,6 +67,7 @@ import {
   updateProfile,
   updateProperty,
   uploadPhoto,
+  type Appointment,
   type ClientProfile,
   type PhotoWithUrl,
 } from "@/lib/portal";
@@ -101,14 +103,83 @@ const ghostBtn =
 
 const TIERS = ["Essential", "Signature", "Estate"];
 
-type Tab = "clients" | "appointments" | "invoices" | "site";
+type Tab = "today" | "clients" | "appointments" | "invoices" | "site";
 
 const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
+  { id: "today", label: "Today", icon: Sun },
   { id: "clients", label: "Clients & properties", icon: Users },
   { id: "appointments", label: "Appointments", icon: CalendarDays },
   { id: "invoices", label: "Invoicing", icon: Receipt },
   { id: "site", label: "Website editor", icon: Globe },
 ];
+
+const homeSakeTimeZone = "America/Chicago";
+const workdayKey = new Intl.DateTimeFormat("en-CA", { timeZone: homeSakeTimeZone });
+const workdayHeading = new Intl.DateTimeFormat("en-US", {
+  timeZone: homeSakeTimeZone,
+  dateStyle: "full",
+});
+const visitTime = new Intl.DateTimeFormat("en-US", {
+  timeZone: homeSakeTimeZone,
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+
+function TodayVisits({
+  id,
+  title,
+  visits,
+  loading,
+  failed,
+  empty,
+  showDate,
+  propertyLabel,
+  onOpen,
+}: {
+  id: string;
+  title: string;
+  visits: Appointment[];
+  loading: boolean;
+  failed: boolean;
+  empty: string;
+  showDate?: boolean;
+  propertyLabel: (id: string) => string;
+  onOpen: (visit: Appointment) => void;
+}) {
+  return (
+    <section className="panel rounded-sm p-6" aria-labelledby={id}>
+      <h2 id={id} className="font-display text-xl">{title}</h2>
+      {failed && <p role="alert" className="mt-3 text-sm text-destructive">Could not load visits. Try refreshing the page.</p>}
+      {loading && <p role="status" className="mt-3 text-sm text-muted-foreground">Loading visits…</p>}
+      {!loading && !failed && !visits.length && (
+        <p className="mt-3 text-sm text-muted-foreground">{empty}</p>
+      )}
+      {visits.length > 0 && (
+        <ul className="mt-4 space-y-3">
+          {visits.map((visit) => {
+            const date = new Date(visit.scheduled_at);
+            return (
+              <li key={visit.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-4">
+                <div className="min-w-0 break-words">
+                  <p className="font-semibold">{visit.service}</p>
+                  <p className="text-sm text-muted-foreground">{propertyLabel(visit.property_id)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {showDate && `${workdayHeading.format(date)} · `}
+                    {visitTime.format(date)} · {visit.status}
+                  </p>
+                </div>
+                <button type="button" className={ghostBtn} onClick={() => onOpen(visit)}>
+                  Open visit workspace
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 /** Client directory row: dropdown edits stay local until the admin saves them. */
 function ClientRow({
@@ -339,7 +410,8 @@ function AdminPage() {
   const createClientFn = useServerFn(adminCreateClient);
   const deleteClientFn = useServerFn(adminDeleteClient);
 
-  const [tab, setTab] = useState<Tab>("clients");
+  const [tab, setTab] = useState<Tab>("today");
+  const [today, setToday] = useState(() => new Date());
   const [clientSearch, setClientSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -380,6 +452,11 @@ function AdminPage() {
   });
 
   const isAdmin = role === "admin";
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setToday(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Strict role routing: clients never see the admin portal.
   useEffect(() => {
@@ -506,6 +583,12 @@ function AdminPage() {
     window.requestAnimationFrame(() => document.getElementById("visit-notes")?.scrollIntoView({ block: "start" }));
   };
 
+  const openPropertyVisit = (visit: Appointment) => {
+    setTab("clients");
+    setActiveId(visit.property_id);
+    openVisitWorkspace(visit.id);
+  };
+
   const signOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -606,6 +689,15 @@ function AdminPage() {
   const upcomingProperty = property
     ? upcomingAll.filter((a) => a.property_id === property.id)
     : [];
+
+  const todayKey = workdayKey.format(today);
+  const todayVisits = (allAppointments.data ?? []).filter(
+    (visit) => visit.status !== "Cancelled" && workdayKey.format(new Date(visit.scheduled_at)) === todayKey,
+  );
+  const visitsAwaitingReport = (allAppointments.data ?? []).filter(
+    (visit) => visit.status === "Completed" && !visit.published_report && !visit.visit_report?.trim(),
+  );
+  const pendingRequests = requests.data?.filter((request) => request.status === "Pending") ?? [];
 
   const search = clientSearch.trim().toLowerCase();
   const filteredProfiles = (profiles.data ?? []).filter((profile) =>
@@ -754,13 +846,27 @@ function AdminPage() {
             </nav>
           )}
 
-          {(property || (tab === "clients" && (requests.isError ||
-            requests.data?.some((request) => request.status === "Pending")))) && (
+          {!property && tab === "today" && (
+            <>
+              <p className="text-sm text-muted-foreground">{workdayHeading.format(today)} · Central time</p>
+              <nav aria-label="Today shortcuts" className="flex flex-wrap gap-2">
+                <a href="#today-visits" className={ghostBtn}>Appointments ({todayVisits.length})</a>
+                <a href="#service-requests" className={ghostBtn}>Pending requests ({pendingRequests.length})</a>
+                <a href="#reports-to-publish" className={ghostBtn}>Reports to publish ({visitsAwaitingReport.length})</a>
+              </nav>
+              <TodayVisits id="today-visits" title="Today’s appointments"
+                visits={todayVisits} loading={allAppointments.isPending} failed={allAppointments.isError}
+                empty="No appointments scheduled for today." propertyLabel={propertyLabel} onOpen={openPropertyVisit} />
+            </>
+          )}
+
+          {(property || tab === "today" || (tab === "clients" && (requests.isError || pendingRequests.length > 0))) && (
             <section className="panel rounded-sm p-6" aria-labelledby="service-requests">
               <h2 id="service-requests" className="font-display text-xl">Client service requests</h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 Approving a visit cancellation cancels that booking. For other requests, approval records your decision; coordinate any scope or price change with the client separately.
               </p>
+              {requests.isPending && <p role="status" className="mt-3 text-sm text-muted-foreground">Loading requests…</p>}
               {requests.isError && <p role="alert" className="mt-3 text-destructive">Could not load requests.</p>}
               <ul className="mt-4 space-y-3">
                 {(requests.data ?? []).filter((request) => property
@@ -799,6 +905,12 @@ function AdminPage() {
                   <li className="text-sm text-muted-foreground">No {property ? "service requests" : "pending requests"}.</li>}
               </ul>
             </section>
+          )}
+
+          {!property && tab === "today" && (
+            <TodayVisits id="reports-to-publish" title="Reports to publish"
+              visits={visitsAwaitingReport} loading={allAppointments.isPending} failed={allAppointments.isError}
+              empty="All completed visits have a report." showDate propertyLabel={propertyLabel} onOpen={openPropertyVisit} />
           )}
 
           {/* ---------------- Unified property view ---------------- */}
@@ -1006,7 +1118,7 @@ function AdminPage() {
                   {reportVisit && <VisitWorkspace key={reportVisit.id} visit={reportVisit}
                     plan={ownerProfile?.membership_tier ?? null}
                     requests={(requests.data ?? []).filter((request) => request.appointment_id === reportVisit.id)}
-                    onPublished={() => propertyAppointments.refetch()} />}
+                    onPublished={() => Promise.all([propertyAppointments.refetch(), allAppointments.refetch()])} />}
                 </div>
 
                 <h3 className={`${label} mt-8`}>Appointment history</h3>
@@ -1616,11 +1728,7 @@ function AdminPage() {
                       {a.notes && <p className="text-xs text-muted-foreground">{a.notes}</p>}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <button type="button" className={ghostBtn} onClick={() => {
-                        setTab("clients");
-                        setActiveId(a.property_id);
-                        openVisitWorkspace(a.id);
-                      }}>Open visit workspace</button>
+                      <button type="button" className={ghostBtn} onClick={() => openPropertyVisit(a)}>Open visit workspace</button>
                       <button
                         type="button"
                         disabled={working}
