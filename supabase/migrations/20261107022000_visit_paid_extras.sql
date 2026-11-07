@@ -13,7 +13,7 @@ create table public.visit_paid_extras (
 create index visit_paid_extras_appointment_idx on public.visit_paid_extras (appointment_id);
 alter table public.visit_paid_extras enable row level security;
 revoke all on public.visit_paid_extras from public, anon, authenticated;
-grant select, insert (appointment_id, scope, amount_cents), update (invoice_id)
+grant select, insert (id, appointment_id, scope, amount_cents), update (invoice_id)
   on public.visit_paid_extras to authenticated;
 
 create policy "Staff and property owners can read quotes" on public.visit_paid_extras

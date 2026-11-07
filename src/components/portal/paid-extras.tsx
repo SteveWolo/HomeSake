@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { sendInvoiceDueEmail } from "@/lib/notifications.functions";
 import {
@@ -34,6 +34,7 @@ export function AdminPaidExtras({ visit, requests }: {
   const queryKey = ["visit-paid-extras", visit.id];
   const quotes = useQuery({ queryKey, queryFn: () => listVisitExtras(visit.id), refetchInterval: 30_000 });
   const [scope, setScope] = useState("");
+  const sendId = useRef<string | null>(null);
   const [price, setPrice] = useState("");
   const [notice, setNotice] = useState("");
   const action = useMutation({
@@ -49,7 +50,9 @@ export function AdminPaidExtras({ visit, requests }: {
         <form className="mt-4 grid gap-3" onSubmit={(event) => {
           event.preventDefault();
           action.mutate(async () => {
-            await sendPaidExtra(visit.id, scope, price);
+            sendId.current ??= crypto.randomUUID();
+            await sendPaidExtra(sendId.current, visit.id, scope, price);
+            sendId.current = null;
             setScope("");
             setPrice("");
             setNotice("Quote sent to the client portal.");
@@ -58,19 +61,19 @@ export function AdminPaidExtras({ visit, requests }: {
         }}>
           {requests.filter((request) => request.kind !== "Cancel visit" && request.status !== "Declined").map((request) => (
             <button key={request.id} type="button" disabled={action.isPending} className={`${button} justify-self-start`}
-              onClick={() => setScope(request.details.slice(0, 1000))}>
+              onClick={() => { sendId.current = null; setScope(request.details.slice(0, 1000)); }}>
               Use client request · {request.kind}
             </button>
           ))}
           <label className="grid gap-1 text-sm">
             Scope of work
-            <textarea required maxLength={1000} className={field} value={scope}
-              onChange={(event) => setScope(event.target.value)} />
+            <textarea required disabled={action.isPending} maxLength={1000} className={field} value={scope}
+              onChange={(event) => { sendId.current = null; setScope(event.target.value); }} />
           </label>
           <label className="grid gap-1 text-sm sm:max-w-48">
             Total price ($)
-            <input required type="number" min="0.50" max="999999.99" step="0.01" className={field}
-              value={price} onChange={(event) => setPrice(event.target.value)} />
+            <input required disabled={action.isPending} type="number" min="0.50" max="999999.99" step="0.01" className={field}
+              value={price} onChange={(event) => { sendId.current = null; setPrice(event.target.value); }} />
           </label>
           <button className={`${primary} justify-self-start`} type="submit"
             disabled={action.isPending || !scope.trim()}>Send quote to portal</button>

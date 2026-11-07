@@ -439,7 +439,7 @@ export type Database = {
           responded_at: string | null
           invoice_id: string | null
         }
-        Insert: { appointment_id: string; scope: string; amount_cents: number }
+        Insert: { id?: string; appointment_id: string; scope: string; amount_cents: number }
         Update: { invoice_id?: string | null }
         Relationships: [{
           foreignKeyName: "visit_paid_extras_appointment_id_fkey"
