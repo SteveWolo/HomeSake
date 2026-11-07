@@ -52,6 +52,8 @@ import {
 import { PhotoLightbox } from "@/components/portal/photo-lightbox";
 import { VisitReportContent } from "@/components/portal/visit-report";
 import { readVisitReport } from "@/lib/visit-workspace";
+import { canQuoteVisit, ClientPaidExtras } from "@/components/portal/paid-extras";
+import { listPropertyExtras } from "@/lib/paid-extras";
 import { ServiceRequests } from "@/components/portal/service-requests";
 import { RescheduleModal } from "@/components/portal/reschedule-modal";
 
@@ -315,6 +317,12 @@ function DashboardPage() {
   }, [properties.data, activeId]);
 
   const property = properties.data?.find((p) => p.id === activeId) ?? null;
+  const extras = useQuery({
+    queryKey: ["property-paid-extras", property?.id],
+    queryFn: () => listPropertyExtras(property!.id),
+    enabled: Boolean(property),
+    refetchInterval: 30_000,
+  });
 
   const linkedVisit = useQuery({
     queryKey: ["linked-visit", user?.id, linkedVisitId],
@@ -497,6 +505,8 @@ function DashboardPage() {
   const nextVisitAt = upcoming[0]?.scheduled_at ?? (useLegacyVisit ? property?.next_visit_at : null);
   const nextVisitName = upcoming[0]?.service ?? (useLegacyVisit ? property?.next_visit_note : null);
 
+  const pendingExtras = extras.data?.filter((quote) => quote.status === "Pending" &&
+    (appointments.data ?? []).some((visit) => visit.id === quote.appointment_id && canQuoteVisit(visit))) ?? [];
   const latestReport = (appointments.data ?? []).find((visit) => Boolean(visit.published_report || visit.visit_report));
 
   const state = profile.data ? membershipState(profile.data) : "active";
@@ -639,6 +649,11 @@ function DashboardPage() {
             <>
               <nav aria-label="Dashboard quick actions" className="flex flex-wrap gap-3 text-sm text-primary">
                 <button type="button" className="underline" onClick={() => setTab("appointments")}>See visits and notes</button>
+                {pendingExtras.length > 0 && (
+                  <button type="button" className="font-semibold text-primary underline" onClick={() => setTab("appointments")}>
+                    Review paid extras ({pendingExtras.length})
+                  </button>
+                )}
                 <button type="button" className="underline" onClick={() => setTab("appointments")}>Request a service change</button>
                 <a href="#open-items" className="underline">See issues needing attention</a>
               </nav>
@@ -910,6 +925,9 @@ function DashboardPage() {
                       <p className="mt-1 text-sm font-semibold">{a.service}</p>
                       {a.notes && <p className="mt-2 whitespace-pre-wrap text-sm">{a.notes}</p>}
                       <PublishedVisitReport visit={a} expanded={linkedVisitId === a.id} />
+                        <ClientPaidExtras visit={a}
+                          quotes={(extras.data ?? []).filter((quote) => quote.appointment_id === a.id)}
+                          onResponse={() => extras.refetch()} />
                     </li>
                   ))}
                   {!upcoming.length && (
@@ -933,6 +951,9 @@ function DashboardPage() {
                         <p className="mt-1 text-sm font-semibold">{a.service}</p>
                         {a.notes && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{a.notes}</p>}
                         <PublishedVisitReport visit={a} expanded={linkedVisitId === a.id} />
+                        <ClientPaidExtras visit={a}
+                          quotes={(extras.data ?? []).filter((quote) => quote.appointment_id === a.id)}
+                          onResponse={() => extras.refetch()} />
                       </div>
                     </li>
                   ))}
@@ -942,6 +963,7 @@ function DashboardPage() {
                 </ul>
               </section>
               <div className="lg:col-span-2">
+                {extras.isError && <p role="alert" className="mb-4 text-sm text-destructive">Could not load paid extras. Try refreshing the page.</p>}
                 <ServiceRequests key={property.id} propertyId={property.id} visits={upcoming} />
               </div>
             </div>
