@@ -7,6 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveRole } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>): { visit?: string } =>
+    typeof search["visit"] === "string" && /^[a-f0-9-]{36}$/i.test(search["visit"])
+      ? { visit: search["visit"] } : {},
   head: () => ({
     meta: [
       { name: "robots", content: "noindex" },
@@ -30,6 +33,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [resetEmail, setResetEmail] = useState("");
@@ -59,7 +63,8 @@ function LoginPage() {
       if (!userId || !active) return;
       const role = await resolveRole(userId);
       if (!active) return;
-      navigate({ to: role === "admin" ? "/admin" : "/dashboard", replace: true });
+      if (role === "admin") navigate({ to: "/admin", replace: true });
+      else navigate({ to: "/dashboard", search, replace: true });
     });
     return () => {
       active = false;
@@ -83,7 +88,7 @@ function LoginPage() {
         await supabase.auth.signOut();
         throw new Error("Admin accounts sign in at /admin/login.");
       }
-      navigate({ to: "/dashboard", replace: true });
+      navigate({ to: "/dashboard", search, replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {

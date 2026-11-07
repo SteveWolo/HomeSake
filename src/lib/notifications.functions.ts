@@ -288,3 +288,41 @@ export const sendVisitDetailsEmail = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { sent: await emailVisit(visit, data.confirmation ? "confirmation" : "manual") };
   });
+
+export const sendPublishedVisitReportEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ appointmentId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { sendEmail, layout, siteUrl, statHtml } = await import("@/lib/email.server");
+    const { data: visit, error } = await supabaseAdmin.from("appointments")
+      .select("property_id,scheduled_at,service,published_report").eq("id", data.appointmentId).single();
+    if (error) throw new Error(error.message);
+    const report = visit.published_report;
+    if (!report || typeof report !== "object" || Array.isArray(report) || typeof report["publishedAt"] !== "string") {
+      throw new Error("Publish the report before emailing it.");
+    }
+    const { data: property, error: propertyError } = await supabaseAdmin.from("properties")
+      .select("owner_id").eq("id", visit.property_id).single();
+    if (propertyError) throw new Error(propertyError.message);
+    const { data: owner, error: ownerError } = await supabaseAdmin.from("profiles")
+      .select("email").eq("id", property.owner_id).single();
+    if (ownerError) throw new Error(ownerError.message);
+    if (!owner.email) throw new Error("This client has no email address on file.");
+    await sendEmail({
+      to: owner.email,
+      subject: "Your Homesake visit report is ready",
+      html: layout({
+        title: "Your visit report is ready",
+        intro: "Sign in to see what was completed, photos, and any recommended follow-up.",
+        bodyHtml: statHtml([
+          ["Service", visit.service],
+          ["Visit date", new Date(visit.scheduled_at).toLocaleDateString("en-US", { timeZone: "America/Chicago" })],
+        ]),
+        ctaLabel: "View your report",
+        ctaHref: `${siteUrl()}/dashboard?visit=${data.appointmentId}`,
+      }),
+      idempotencyKey: `visit-report/${data.appointmentId}/${report["publishedAt"]}`,
+    });
+  });
