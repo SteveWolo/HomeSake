@@ -1,3 +1,4 @@
+import { portalPath } from "./portal-links";
 import { supabaseAdmin } from "../integrations/supabase/client.server";
 import type { Database } from "../integrations/supabase/types";
 import { layout, sendEmail, siteUrl, statHtml } from "./email.server";
@@ -42,7 +43,7 @@ export async function emailVisit(visit: Visit, message: Message) {
         })],
       ]),
       ctaLabel: "View your visits",
-      ctaHref: `${siteUrl()}/dashboard`,
+      ctaHref: `${siteUrl()}${portalPath({ visit: current.id })}`,
     }),
     ...(message === "manual" ? {} : {
       idempotencyKey: `visit/${current.id}/${current.notification_version}/${message}`,

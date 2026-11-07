@@ -1,3 +1,4 @@
+import { parsePortalSearch } from "@/lib/portal-links";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -9,8 +10,8 @@ export const Route = createFileRoute("/_authenticated")({
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       if (location.pathname.startsWith("/admin")) throw redirect({ to: "/admin/login" });
-      const visit = new URLSearchParams(location.searchStr).get("visit");
-      throw redirect({ to: "/login", search: visit ? { visit } : {} });
+      const search = parsePortalSearch(Object.fromEntries(new URLSearchParams(location.searchStr)));
+      throw redirect({ to: "/login", search });
     }
     return { user: data.user };
   },
