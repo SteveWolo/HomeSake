@@ -44,8 +44,11 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
   published: VisitReport | null;
   onPublished: () => Promise<unknown>;
 }) {
-  const [report, setReport] = useState<VisitReport>(() => initial?.report ?? published ??
-    { ...emptyVisitReport, summary: visit.visit_report ?? "" });
+  const [report, setReport] = useState<VisitReport>(() => {
+    const source = initial?.report ?? published ?? { ...emptyVisitReport, summary: visit.visit_report ?? "" };
+    const taskPhotos = new Set(source.checks.flatMap((check) => check.photos ?? []));
+    return { ...source, photos: source.photos.filter((path) => !taskPhotos.has(path)) };
+  });
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [revision, setRevision] = useState(initial?.revision ?? null);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -91,18 +94,48 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
     }
   };
 
+  const updateCheck = (index: number, changes: Partial<VisitReport["checks"][number]>) =>
+    setReport((current) => ({ ...current, checks: current.checks.map((check, i) =>
+      i === index ? { ...check, ...changes } : check) }));
+
+  const preview = {
+    ...report,
+    checks: report.checks.flatMap((check) =>
+      check.status ? [check] : check.note?.trim() || check.photos?.length
+        ? [{ ...check, status: "Needs attention" as const }] : []),
+  };
+  const checkableTasks = report.checks.filter((task) => task.status === null || task.status === "Completed");
+  const allChecked = checkableTasks.length > 0 && checkableTasks.every((task) => task.status === "Completed");
+  const photoCount = report.photos.length + report.checks.reduce((count, check) => count + (check.photos?.length ?? 0), 0);
+  const uploadTaskPhoto = (index: number, file: File) => run(async () => {
+    const path = await uploadVisitReportPhoto(visit.id, file);
+    updateCheck(index, { photos: [...(report.checks[index]?.photos ?? []), path] });
+    setNotice("Task photo attached. Save the draft to keep it.");
+  });
+
   const save = (publish: boolean) => run(async () => {
     const next = { ...report, summary: report.summary.trim() };
     if (publish) {
-      next.checks = report.checks.filter((check) => check.status !== null);
+      next.checks = preview.checks;
       if (!next.summary && !next.checks.length && !next.photos.length) {
         throw new Error("Add a summary, a checked item, or a photo before publishing.");
       }
     }
     // Draft retains unfinished checklist items. The published snapshot is filtered in SQL.
-    const savedReport = { ...report, summary: next.summary };
-    const savedRevision = await saveVisitDraft(visit.id, revision, savedReport, notes, publish);
+    const savedReport = {
+      ...report,
+      summary: next.summary,
+      checks: report.checks.map((check) => publish && !check.status && (check.note?.trim() || check.photos?.length)
+        ? { ...check, status: "Needs attention" as const } : check),
+    };
+    // The storage policy authorizes photos from the published report's top-level list.
+    const outgoing = publish ? {
+      ...savedReport,
+      photos: [...new Set([...report.photos, ...preview.checks.flatMap((check) => check.photos ?? [])])],
+    } : savedReport;
+    const savedRevision = await saveVisitDraft(visit.id, revision, outgoing, notes, publish);
     setRevision(savedRevision);
+    setReport(savedReport);
     queryClient.setQueryData(["visit-report-draft", visit.id], {
       report: savedReport, notes, revision: savedRevision,
     });
@@ -123,7 +156,6 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
     await onPublished();
   });
 
-  const preview = { ...report, checks: report.checks.filter((item) => item.status !== null) };
   return (
     <div className="mt-4 space-y-5">
       <div className="rounded-sm border border-border p-4">
@@ -157,26 +189,70 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
           </div>
           {report.checks.length > 0 && (
             <details open>
-              <summary className="cursor-pointer font-semibold">Checklist · {preview.checks.length} of {report.checks.length} marked</summary>
+              <summary className="cursor-pointer font-semibold">Checklist · {report.checks.filter((item) => item.status === "Completed").length} of {report.checks.length} completed</summary>
+              <label className="mt-3 flex w-fit items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" className="size-4" checked={allChecked} disabled={!checkableTasks.length}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setReport((current) => ({
+                      ...current,
+                      checks: current.checks.map((task) => checked && task.status === null
+                        ? { ...task, status: "Completed" }
+                        : !checked && task.status === "Completed" ? { ...task, status: null } : task),
+                    }));
+                  }} />
+                Check all
+              </label>
+              <p className="mt-1 text-xs text-muted-foreground">Tasks marked Needs attention or Not applicable keep their outcome.</p>
               <ol className="mt-2 max-h-[28rem] divide-y divide-border overflow-y-auto rounded-sm border border-border px-3">
                 {report.checks.map((item, i) => (
-                  <li key={i} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-                    <label className="min-w-0 flex-1" htmlFor={`visit-check-${i}`}>{item.title}</label>
-                    <select id={`visit-check-${i}`} className="min-h-10 rounded-sm border border-border bg-background px-2"
-                      value={item.status ?? ""} onChange={(event) => {
-                        const status = checkStates.find((option) => option === event.target.value) ?? null;
-                        setReport({ ...report, checks: report.checks.map((check, index) => index === i ? { ...check, status } : check) });
-                      }}>
+                  <li key={i} className="space-y-2 py-3 text-sm">
+                    <label className="flex items-start gap-2">
+                      <input type="checkbox" className="mt-1 size-4" checked={item.status === "Completed"}
+                        onChange={(event) => updateCheck(i, { status: event.target.checked ? "Completed" : null })} />
+                      {item.title}
+                    </label>
+                    {item.status !== "Completed" && <select aria-label={`Outcome for ${item.title}`}
+                      className="min-h-10 rounded-sm border border-border bg-background px-2"
+                      value={item.status ?? ""} onChange={(event) => updateCheck(i, {
+                        status: checkStates.find((option) => option === event.target.value) ?? null,
+                      })}>
                       <option value="">Not checked</option>
-                      {checkStates.map((status) => <option key={status}>{status}</option>)}
-                    </select>
+                      <option>Needs attention</option>
+                      <option>Not applicable</option>
+                    </select>}
+                    <div className="flex flex-wrap items-start gap-2">
+                      <details className="min-w-0">
+                        <summary className={`${button} cursor-pointer`}>Notes{item.note?.trim() ? " ✓" : ""}</summary>
+                        <label className="mt-2 block">Client note
+                          <textarea className={input} maxLength={1000} rows={2} value={item.note ?? ""}
+                            placeholder="What did you do, or why couldn’t you finish?"
+                            onChange={(event) => updateCheck(i, { note: event.target.value })} />
+                        </label>
+                      </details>
+                      <label className={`${button} cursor-pointer focus-within:ring-2 focus-within:ring-primary`}>
+                        Pics{item.photos?.length ? ` (${item.photos.length})` : ""}
+                        <input className="sr-only" aria-label={`Add a picture for ${item.title}`}
+                          type="file" accept="image/*" disabled={photoCount >= 12}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = "";
+                            if (file) void uploadTaskPhoto(i, file);
+                          }} />
+                      </label>
+                    </div>
+                      {!!item.photos?.length && <VisitReportContent report={{ ...emptyVisitReport, photos: item.photos }} />}
+                      {item.photos?.map((path, index) => <button type="button" key={path} className={button}
+                        onClick={() => updateCheck(i, { photos: item.photos?.filter((photo) => photo !== path) ?? [] })}>
+                        Remove task photo {index + 1}
+                      </button>)}
                   </li>
                 ))}
               </ol>
             </details>
           )}
-          <label className="block text-sm">Report photos ({report.photos.length}/12)
-            <input className="mt-2 block w-full" type="file" accept="image/*" disabled={report.photos.length >= 12}
+          <label className="block text-sm">General report photos ({photoCount}/12 photos used)
+            <input className="mt-2 block w-full" type="file" accept="image/*" disabled={photoCount >= 12}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
@@ -205,7 +281,7 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
       ) : (
         <section className="space-y-4 rounded-sm border border-border p-4">
           <h4 className="font-semibold">What the client will see</h4>
-          <p className="text-sm text-muted-foreground">Private notes and unchecked items stay out of the report.</p>
+          <p className="text-sm text-muted-foreground">Unchecked tasks with a client note or photo appear under Needs attention.</p>
           <VisitReportContent report={preview} />
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={email} disabled={busy} onChange={(event) => setEmail(event.target.checked)} />

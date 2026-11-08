@@ -526,6 +526,18 @@ function DashboardPage() {
   const nextVisitAt = upcoming[0]?.scheduled_at ?? (useLegacyVisit ? property?.next_visit_at : null);
   const nextVisitName = upcoming[0]?.service ?? (useLegacyVisit ? property?.next_visit_note : null);
 
+  const visitDay = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" });
+  const dayCounts = new Map<string, number>();
+  for (const visit of appointments.data ?? []) {
+    if (visit.status === "Cancelled") continue;
+    const completed = readVisitReport(visit.published_report)?.checks.filter((task) => task.status === "Completed").length ?? 0;
+    if (!completed) continue;
+    const day = visitDay.format(new Date(visit.scheduled_at));
+    dayCounts.set(day, (dayCounts.get(day) ?? 0) + completed);
+  }
+  const totalChecklistTasks = Array.from(dayCounts.values()).reduce((total, count) => total + count, 0);
+  const todayChecklistTasks = dayCounts.get(visitDay.format(new Date())) ?? 0;
+
   const pendingExtras = extras.data?.filter((quote) => quote.status === "Pending" &&
     (appointments.data ?? []).some((visit) => visit.id === quote.appointment_id && canQuoteVisit(visit))) ?? [];
   const latestReport = (appointments.data ?? []).find((visit) => Boolean(visit.published_report || visit.visit_report));
@@ -785,12 +797,23 @@ function DashboardPage() {
                   <div>
                     <p className={label}>
                       <ListChecks className="size-3.5 text-primary" />
-                      Tasks you didn't have to do
+                      Completed checklist tasks
                     </p>
-                    <p className="font-display mt-4 text-4xl text-primary">{tasksDone}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Maintenance jobs we handled for you
-                    </p>
+                    {appointments.isError ? <p className="mt-3 text-sm" role="alert">Could not load task counts.</p>
+                      : appointments.isPending ? <p className="mt-3 text-sm" role="status">Loading task counts…</p>
+                      : <>
+                        <dl className="mt-4 flex flex-wrap gap-6">
+                          <div><dt className="text-sm">Today</dt><dd className="text-3xl font-semibold text-primary">{todayChecklistTasks}</dd></div>
+                          <div><dt className="text-sm">All time</dt><dd className="text-3xl font-semibold text-primary">{totalChecklistTasks}</dd></div>
+                        </dl>
+                        <p className="mt-2 text-xs text-muted-foreground">Published reports by visit date · Central time</p>
+                        {dayCounts.size > 0 && <details className="mt-3 text-sm">
+                          <summary className="cursor-pointer text-primary">Counts by day</summary>
+                          <ul className="mt-2 space-y-1">{Array.from(dayCounts).sort(([a], [b]) => b.localeCompare(a)).map(([day, count]) => (
+                            <li key={day}>{day} · {count} completed</li>
+                          ))}</ul>
+                        </details>}
+                      </>}
                   </div>
                 </div>
               </div>
@@ -878,7 +901,7 @@ function DashboardPage() {
                 <section className="panel rounded-sm p-6" aria-labelledby="tasks-log">
                   <h2 id="tasks-log" className={label}>
                     <ListChecks className="size-3.5 text-primary" />
-                    Tasks you didn't have to do
+                    Other maintenance activity
                   </h2>
                   <p className="font-display mt-3 text-3xl text-primary">{tasksDone}</p>
                   <ul className="mt-5 space-y-2">

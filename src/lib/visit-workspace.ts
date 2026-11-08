@@ -8,6 +8,8 @@ export const checkStates = ["Completed", "Needs attention", "Not applicable"] as
 const checkSchema = z.object({
   title: z.string().max(300),
   status: z.enum(checkStates).nullable(),
+  note: z.string().max(1000).optional(),
+  photos: z.array(z.string().max(100)).max(12).optional(),
 });
 const reportSchema = z.object({
   summary: z.string().max(4000),
