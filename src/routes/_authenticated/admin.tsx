@@ -579,6 +579,10 @@ function AdminPage() {
 
   const reportVisit = (propertyAppointments.data ?? []).find((visit) =>
     visit.id === reportVisitId && visit.status !== "Cancelled");
+  const nextReportVisit = reportVisit ? (propertyAppointments.data ?? [])
+    .filter((visit) => ["Scheduled", "Rescheduled"].includes(visit.status) &&
+      Date.parse(visit.scheduled_at) >= Date.now() && Date.parse(visit.scheduled_at) > Date.parse(reportVisit.scheduled_at))
+    .sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at))[0] : undefined;
   const openVisitWorkspace = (visitId: string) => {
     setReportVisitId(visitId);
     window.requestAnimationFrame(() => document.getElementById("visit-notes")?.scrollIntoView({ block: "start" }));
@@ -1119,7 +1123,7 @@ function AdminPage() {
                       <option key={visit.id} value={visit.id}>{formatDateTime(visit.scheduled_at)} · {visit.service}</option>
                     ))}
                   </select>
-                  {reportVisit && <VisitWorkspace key={reportVisit.id} visit={reportVisit}
+                  {reportVisit && <VisitWorkspace key={reportVisit.id} visit={reportVisit} nextVisit={nextReportVisit}
                     plan={ownerProfile?.membership_tier ?? null}
                     requests={(requests.data ?? []).filter((request) => request.appointment_id === reportVisit.id)}
                     onPublished={() => Promise.all([propertyAppointments.refetch(), allAppointments.refetch()])} />}

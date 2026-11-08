@@ -16,8 +16,9 @@ const button = "rounded-full border border-border px-4 py-2 text-sm disabled:opa
 const primary = "rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50";
 const input = "w-full rounded-sm border border-border bg-background p-3 text-sm";
 
-export function VisitWorkspace({ visit, plan, requests, onPublished }: {
+export function VisitWorkspace({ visit, nextVisit, plan, requests, onPublished }: {
   visit: Appointment;
+  nextVisit: Appointment | undefined;
   plan?: string | null;
   requests: { id: string; kind: string; details: string; status: string }[];
   onPublished: () => Promise<unknown>;
@@ -30,14 +31,15 @@ export function VisitWorkspace({ visit, plan, requests, onPublished }: {
   return (
     <>
       <AdminPaidExtras visit={visit} requests={requests} />
-      <VisitEditor visit={visit} plan={plan ?? null} requests={requests} initial={draft.data} published={published}
+      <VisitEditor visit={visit} nextVisit={nextVisit} plan={plan ?? null} requests={requests} initial={draft.data} published={published}
         onPublished={onPublished} />
     </>
   );
 }
 
-function VisitEditor({ visit, plan, requests, initial, published, onPublished }: {
+function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onPublished }: {
   visit: Appointment;
+  nextVisit: Appointment | undefined;
   plan: string | null;
   requests: { id: string; kind: string; details: string; status: string }[];
   initial: Awaited<ReturnType<typeof loadVisitDraft>>;
@@ -111,6 +113,30 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
     const path = await uploadVisitReportPhoto(visit.id, file);
     updateCheck(index, { photos: [...(report.checks[index]?.photos ?? []), path] });
     setNotice("Task photo attached. Save the draft to keep it.");
+  });
+
+  const carryForward = (task: VisitReport["checks"][number]) => run(async () => {
+    if (!nextVisit) return;
+    const draft = await loadVisitDraft(nextVisit.id);
+    const target = draft?.report ?? readVisitReport(nextVisit.published_report) ??
+      { ...emptyVisitReport, summary: nextVisit.visit_report ?? "" };
+    const existing = target.checks.find((check) => check.title === task.title);
+    const note = task.note?.trim();
+    if (existing && (existing.status === "Completed" || existing.status === "Not applicable" || existing.note?.trim() || (existing.status === "Needs attention" && !note))) {
+      setNotice("This task already has an outcome or note on the next visit. Open that visit to review it.");
+      return;
+    }
+    const followUp = { ...existing, title: task.title, status: "Needs attention" as const, note };
+    const nextReport = {
+      ...target,
+      checks: existing ? target.checks.map((check) => check === existing ? followUp : check)
+        : [...target.checks, followUp],
+    };
+    const nextRevision = await saveVisitDraft(nextVisit.id, draft?.revision ?? null, nextReport, draft?.notes ?? "", false);
+    queryClient.setQueryData(["visit-report-draft", nextVisit.id], {
+      report: nextReport, notes: draft?.notes ?? "", revision: nextRevision,
+    });
+    setNotice(`Follow-up added to the draft for ${formatDateTime(nextVisit.scheduled_at)}.`);
   });
 
   const save = (publish: boolean) => run(async () => {
@@ -204,6 +230,9 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
                 Check all
               </label>
               <p className="mt-1 text-xs text-muted-foreground">Tasks marked Needs attention or Not applicable keep their outcome.</p>
+              <p className="mt-1 text-xs text-muted-foreground">{nextVisit
+                ? `Follow-ups go to the draft for ${formatDateTime(nextVisit.scheduled_at)}.`
+                : "Schedule a later visit to carry tasks forward."}</p>
               <ol className="mt-2 max-h-[28rem] divide-y divide-border overflow-y-auto rounded-sm border border-border px-3">
                 {report.checks.map((item, i) => (
                   <li key={i} className="space-y-2 py-3 text-sm">
@@ -246,6 +275,11 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
                         onClick={() => updateCheck(i, { photos: item.photos?.filter((photo) => photo !== path) ?? [] })}>
                         Remove task photo {index + 1}
                       </button>)}
+                    {(item.status === "Needs attention" || item.status === null) && (
+                      <button type="button" className={button} disabled={!nextVisit}
+                        title={nextVisit ? formatDateTime(nextVisit.scheduled_at) : "Schedule a later visit first"}
+                        onClick={() => void carryForward(item)}>Carry forward to next visit</button>
+                    )}
                   </li>
                 ))}
               </ol>
