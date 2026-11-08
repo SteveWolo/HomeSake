@@ -263,7 +263,11 @@ function PublishedVisitReport({ visit, expanded }: {
   ) : null;
   return (
     <details className="mt-3" open={expanded || undefined}>
-      <summary className="cursor-pointer text-sm font-semibold text-primary">View visit report</summary>
+      <summary className="cursor-pointer text-sm font-semibold text-primary">
+        {report.checks.some((task) => task.status === "Needs attention" && task.urgent)
+          ? <span className="text-destructive">Needs immediate attention · View report</span>
+          : "View visit report"}
+      </summary>
       <div className="mt-3"><VisitReportContent report={report} /></div>
     </details>
   );

@@ -311,12 +311,17 @@ export const sendPublishedVisitReportEmail = createServerFn({ method: "POST" })
       .select("email").eq("id", property.owner_id).single();
     if (ownerError) throw new Error(ownerError.message);
     if (!owner.email) throw new Error("This client has no email address on file.");
+    const checks = report["checks"];
+    const urgent = Array.isArray(checks) && checks.some((task) =>
+      task && typeof task === "object" && !Array.isArray(task) &&
+      task["status"] === "Needs attention" && task["urgent"] === true);
     await sendEmail({
       to: owner.email,
-      subject: "Your Homesake visit report is ready",
+      subject: urgent ? "Action needed on your Homesake visit report" : "Your Homesake visit report is ready",
       html: layout({
-        title: "Your visit report is ready",
-        intro: "Sign in to see what was completed, photos, and any recommended follow-up.",
+        title: urgent ? "Your visit report needs your attention" : "Your visit report is ready",
+        intro: urgent ? "Your technician flagged an item for immediate attention. Open the report to see the recommended next step."
+          : "Sign in to see what was completed, photos, and any recommended follow-up.",
         bodyHtml: statHtml([
           ["Service", visit.service],
           ["Visit date", new Date(visit.scheduled_at).toLocaleDateString("en-US", { timeZone: "America/Chicago" })],

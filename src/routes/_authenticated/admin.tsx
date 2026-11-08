@@ -171,7 +171,7 @@ function TodayVisits({
                   </p>
                 </div>
                 <button type="button" className={ghostBtn} onClick={() => onOpen(visit)}>
-                  Open visit workspace
+                  {id === "today-visits" && visit.status !== "Completed" ? "Start visit" : "Open visit workspace"}
                 </button>
               </li>
             );

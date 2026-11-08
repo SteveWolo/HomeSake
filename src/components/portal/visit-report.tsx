@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { checkStates, visitPhotoLinks, type VisitReport } from "@/lib/visit-workspace";
+import { visitPhotoLinks, type VisitReport } from "@/lib/visit-workspace";
 
-export function VisitReportContent({ report }: { report: VisitReport }) {
+export function VisitReportContent({ report, reviewing = false }: { report: VisitReport; reviewing?: boolean }) {
   const taskPaths = report.checks.flatMap((task) => task.photos ?? []);
   const paths = [...new Set([...report.photos, ...taskPaths])];
   const generalPaths = report.photos.filter((path) => !taskPaths.includes(path));
@@ -23,16 +23,19 @@ export function VisitReportContent({ report }: { report: VisitReport }) {
       })}
     </div>
   );
+  const sections = [
+    { label: "Needs immediate attention", tasks: report.checks.filter((task) => task.status === "Needs attention" && task.urgent), open: true },
+    { label: "Needs follow-up", tasks: report.checks.filter((task) => task.status === "Needs attention" && !task.urgent), open: true },
+    { label: "Completed for you", tasks: report.checks.filter((task) => task.status === "Completed"), open: false },
+    { label: "Not applicable", tasks: report.checks.filter((task) => task.status === "Not applicable"), open: false },
+  ];
   return (
     <div className="space-y-4">
-      {report.summary && <p className="whitespace-pre-wrap break-words text-sm">{report.summary}</p>}
-      {report.checks.length > 0 && <p className="font-semibold text-primary">{report.checks.filter((task) => task.status === "Completed").length} tasks completed on this visit</p>}
-      {checkStates.map((status) => {
-        const checks = report.checks.filter((item) => item.status === status);
+      {sections.map(({ label, tasks: checks, open }) => {
         if (!checks.length) return null;
         return (
-          <details key={status} open={status === "Needs attention"}>
-            <summary className="cursor-pointer font-semibold">{status} ({checks.length})</summary>
+          <details key={label} open={open || reviewing}>
+            <summary className="cursor-pointer font-semibold">{label} ({checks.length})</summary>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
               {checks.map((check, i) => <li key={i} className="mb-2">
                 <p>{check.title}</p>
@@ -43,6 +46,8 @@ export function VisitReportContent({ report }: { report: VisitReport }) {
           </details>
         );
       })}
+      {report.summary && <p className="whitespace-pre-wrap break-words text-sm">{report.summary}</p>}
+      {report.checks.length > 0 && <p className="font-semibold text-primary">{report.checks.filter((task) => task.status === "Completed").length} tasks completed on this visit</p>}
       {photos.isError && <p role="alert" className="text-sm">Report photos could not be loaded.</p>}
       {generalPaths.length > 0 && gallery(generalPaths, "Visit report")}
     </div>

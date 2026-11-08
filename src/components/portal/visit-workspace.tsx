@@ -54,6 +54,8 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [revision, setRevision] = useState(initial?.revision ?? null);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [followUpsOnly, setFollowUpsOnly] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [notice, setNotice] = useState("");
@@ -98,7 +100,9 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
 
   const updateCheck = (index: number, changes: Partial<VisitReport["checks"][number]>) =>
     setReport((current) => ({ ...current, checks: current.checks.map((check, i) =>
-      i === index ? { ...check, ...changes } : check) }));
+      i === index ? { ...check, ...changes,
+        ...(changes.status !== undefined && changes.status !== "Needs attention" ? { urgent: false } : {}),
+      } : check) }));
 
   const preview = {
     ...report,
@@ -108,6 +112,7 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
   };
   const checkableTasks = report.checks.filter((task) => task.status === null || task.status === "Completed");
   const allChecked = checkableTasks.length > 0 && checkableTasks.every((task) => task.status === "Completed");
+  const followUpCount = report.checks.filter((task) => task.status === "Needs attention").length;
   const photoCount = report.photos.length + report.checks.reduce((count, check) => count + (check.photos?.length ?? 0), 0);
   const uploadTaskPhoto = (index: number, file: File) => run(async () => {
     const path = await uploadVisitReportPhoto(visit.id, file);
@@ -142,6 +147,10 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
   const save = (publish: boolean) => run(async () => {
     const next = { ...report, summary: report.summary.trim() };
     if (publish) {
+      if (!reviewed) throw new Error("Confirm you reviewed the checklist before publishing.");
+      if (report.checks.some((task) => task.status === "Needs attention" && task.urgent && !task.note?.trim())) {
+        throw new Error("Add a note with the recommended next step for every urgent task.");
+      }
       next.checks = preview.checks;
       if (!next.summary && !next.checks.length && !next.photos.length) {
         throw new Error("Add a summary, a checked item, or a photo before publishing.");
@@ -233,8 +242,12 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
               <p className="mt-1 text-xs text-muted-foreground">{nextVisit
                 ? `Follow-ups go to the draft for ${formatDateTime(nextVisit.scheduled_at)}.`
                 : "Schedule a later visit to carry tasks forward."}</p>
+              {(followUpCount > 0 || followUpsOnly) && <button type="button" className={`${button} mt-2`}
+                aria-pressed={followUpsOnly} onClick={() => setFollowUpsOnly(!followUpsOnly)}>
+                {followUpsOnly ? "Show all tasks" : `Show follow-ups (${followUpCount})`}
+              </button>}
               <ol className="mt-2 max-h-[28rem] divide-y divide-border overflow-y-auto rounded-sm border border-border px-3">
-                {report.checks.map((item, i) => (
+                {report.checks.map((item, i) => (!followUpsOnly || item.status === "Needs attention") && (
                   <li key={i} className="space-y-2 py-3 text-sm">
                     <label className="flex items-start gap-2">
                       <input type="checkbox" className="mt-1 size-4" checked={item.status === "Completed"}
@@ -250,6 +263,11 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
                       <option>Needs attention</option>
                       <option>Not applicable</option>
                     </select>}
+                    {item.status === "Needs attention" && <label className="flex items-center gap-2 text-destructive">
+                      <input type="checkbox" checked={Boolean(item.urgent)}
+                        onChange={(event) => updateCheck(i, { urgent: event.target.checked })} />
+                      Needs immediate attention
+                    </label>}
                     <div className="flex flex-wrap items-start gap-2">
                       <details className="min-w-0">
                         <summary className={`${button} cursor-pointer`}>Notes{item.note?.trim() ? " ✓" : ""}</summary>
@@ -309,21 +327,38 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
           </div>}
           <div className="flex flex-wrap gap-2">
             <button type="button" className={button} onClick={() => void save(false)}>Save draft</button>
-            <button type="button" className={primary} onClick={() => setMode("preview")}>Preview client report</button>
+            <button type="button" className={primary} onClick={() => { setReviewed(false); setMode("preview"); }}>Finish visit · Review report</button>
           </div>
         </fieldset>
       ) : (
         <section className="space-y-4 rounded-sm border border-border p-4">
-          <h4 className="font-semibold">What the client will see</h4>
+          <h4 className="font-semibold">Review before publishing</h4>
+          <dl className="flex flex-wrap gap-4 text-sm">
+            <div><dt>Completed</dt><dd className="font-semibold">{preview.checks.filter((task) => task.status === "Completed").length}</dd></div>
+            <div><dt>Follow-up</dt><dd className="font-semibold">{preview.checks.filter((task) => task.status === "Needs attention").length}</dd></div>
+            <div><dt>Not applicable</dt><dd className="font-semibold">{preview.checks.filter((task) => task.status === "Not applicable").length}</dd></div>
+            <div><dt>Unchecked</dt><dd className="font-semibold">{report.checks.length - preview.checks.length}</dd></div>
+          </dl>
           <p className="text-sm text-muted-foreground">Unchecked tasks with a client note or photo appear under Needs attention.</p>
-          <VisitReportContent report={preview} />
+          <VisitReportContent report={preview} reviewing />
+          {report.checks.length > preview.checks.length && <details className="text-sm">
+            <summary className="cursor-pointer font-semibold">Review unchecked tasks</summary>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {report.checks.filter((task) => !task.status && !task.note?.trim() && !task.photos?.length)
+                .map((task, i) => <li key={i}>{task.title}</li>)}
+            </ul>
+          </details>}
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={reviewed} disabled={busy} onChange={(event) => setReviewed(event.target.checked)} />
+            I reviewed the checklist and confirmed that every task marked complete was done.
+          </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={email} disabled={busy} onChange={(event) => setEmail(event.target.checked)} />
             Email the client a link after publishing
           </label>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={button} disabled={busy} onClick={() => setMode("edit")}>Back to editing</button>
-            <button type="button" className={primary} disabled={busy} onClick={() => void save(true)}>Publish report</button>
+            <button type="button" className={primary} disabled={busy || !reviewed} onClick={() => void save(true)}>Publish report</button>
           </div>
         </section>
       )}
