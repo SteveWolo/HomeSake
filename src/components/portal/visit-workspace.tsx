@@ -104,6 +104,8 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
       check.status ? [check] : check.note?.trim() || check.photos?.length
         ? [{ ...check, status: "Needs attention" as const }] : []),
   };
+  const checkableTasks = report.checks.filter((task) => task.status === null || task.status === "Completed");
+  const allChecked = checkableTasks.length > 0 && checkableTasks.every((task) => task.status === "Completed");
   const photoCount = report.photos.length + report.checks.reduce((count, check) => count + (check.photos?.length ?? 0), 0);
   const uploadTaskPhoto = (index: number, file: File) => run(async () => {
     const path = await uploadVisitReportPhoto(visit.id, file);
@@ -188,6 +190,20 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
           {report.checks.length > 0 && (
             <details open>
               <summary className="cursor-pointer font-semibold">Checklist · {report.checks.filter((item) => item.status === "Completed").length} of {report.checks.length} completed</summary>
+              <label className="mt-3 flex w-fit items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" className="size-4" checked={allChecked} disabled={!checkableTasks.length}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setReport((current) => ({
+                      ...current,
+                      checks: current.checks.map((task) => checked && task.status === null
+                        ? { ...task, status: "Completed" }
+                        : !checked && task.status === "Completed" ? { ...task, status: null } : task),
+                    }));
+                  }} />
+                Check all
+              </label>
+              <p className="mt-1 text-xs text-muted-foreground">Tasks marked Needs attention or Not applicable keep their outcome.</p>
               <ol className="mt-2 max-h-[28rem] divide-y divide-border overflow-y-auto rounded-sm border border-border px-3">
                 {report.checks.map((item, i) => (
                   <li key={i} className="space-y-2 py-3 text-sm">
@@ -205,28 +221,31 @@ function VisitEditor({ visit, plan, requests, initial, published, onPublished }:
                       <option>Needs attention</option>
                       <option>Not applicable</option>
                     </select>}
-                    <details>
-                      <summary className="cursor-pointer text-primary">
-                        Task note and photos{item.note || item.photos?.length ? " · attached" : ""}
-                      </summary>
-                      <label className="mt-2 block">Client note
-                        <textarea className={input} maxLength={1000} rows={2} value={item.note ?? ""}
-                          onChange={(event) => updateCheck(i, { note: event.target.value })} />
-                      </label>
-                      <label className="mt-2 block">Attach task photo
-                        <input className="block w-full" type="file" accept="image/*" disabled={photoCount >= 12}
+                    <div className="flex flex-wrap items-start gap-2">
+                      <details className="min-w-0">
+                        <summary className={`${button} cursor-pointer`}>Notes{item.note?.trim() ? " ✓" : ""}</summary>
+                        <label className="mt-2 block">Client note
+                          <textarea className={input} maxLength={1000} rows={2} value={item.note ?? ""}
+                            placeholder="What did you do, or why couldn’t you finish?"
+                            onChange={(event) => updateCheck(i, { note: event.target.value })} />
+                        </label>
+                      </details>
+                      <label className={`${button} cursor-pointer focus-within:ring-2 focus-within:ring-primary`}>
+                        Pics{item.photos?.length ? ` (${item.photos.length})` : ""}
+                        <input className="sr-only" aria-label={`Add a picture for ${item.title}`}
+                          type="file" accept="image/*" disabled={photoCount >= 12}
                           onChange={(event) => {
                             const file = event.target.files?.[0];
                             event.target.value = "";
                             if (file) void uploadTaskPhoto(i, file);
                           }} />
                       </label>
+                    </div>
                       {!!item.photos?.length && <VisitReportContent report={{ ...emptyVisitReport, photos: item.photos }} />}
                       {item.photos?.map((path, index) => <button type="button" key={path} className={button}
                         onClick={() => updateCheck(i, { photos: item.photos?.filter((photo) => photo !== path) ?? [] })}>
                         Remove task photo {index + 1}
                       </button>)}
-                    </details>
                   </li>
                 ))}
               </ol>
