@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "HomeSake",
+    "slug": "homesake",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.yourhomesake.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Take photos to attach to a HomeSake visit or task.",
+        "NSPhotoLibraryUsageDescription": "Choose photos to attach to a HomeSake visit or task."
+      }
+    },
+    "android": {
+      "package": "com.yourhomesake.app"
+    }
+  }
+}
