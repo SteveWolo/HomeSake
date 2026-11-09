@@ -5,11 +5,13 @@ import { compressImage } from "@/lib/image-compress";
 import type { Json } from "@/integrations/supabase/types";
 
 export const checkStates = ["Completed", "Needs attention", "Not applicable"] as const;
+export const conditions = ["Good", "Needs follow-up", "Urgent issue", "Couldn’t check", "Not applicable"] as const;
 const checkSchema = z.object({
   title: z.string().max(300),
   status: z.enum(checkStates).nullable(),
   note: z.string().max(1000).optional(),
   urgent: z.boolean().optional(),
+  condition: z.enum(conditions).optional(),
   photos: z.array(z.string().max(100)).max(12).optional(),
 });
 const reportSchema = z.object({

@@ -418,7 +418,6 @@ function AdminPage() {
   const [saved, setSaved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [score, setScore] = useState("");
   const [credits, setCredits] = useState("");
   const [nc, setNc] = useState({
     fullName: "",
@@ -519,7 +518,6 @@ function AdminPage() {
 
   useEffect(() => {
     if (!property) return;
-    setScore(String(property.health_score));
     setCredits((property.credits_cents / 100).toFixed(2));
   }, [property?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -641,9 +639,7 @@ function AdminPage() {
     e.preventDefault();
     if (!property) return;
     await updateProperty(property.id, {
-      health_score: Math.max(0, Math.min(100, Number(score) || 0)),
       credits_cents: Math.round((Number(credits) || 0) * 100),
-      score_calculated_at: new Date().toISOString().slice(0, 10),
     });
     setSaved("Property updated.");
     await properties.refetch();
@@ -949,20 +945,9 @@ function AdminPage() {
 
               <section className="panel rounded-sm p-6" aria-labelledby="update-property">
                 <h2 id="update-property" className={label}>
-                  Health score &amp; credits
+                  Property credits
                 </h2>
                 <form className="mt-5 grid gap-4 sm:grid-cols-3" onSubmit={saveProperty}>
-                  <label className="text-sm">
-                    <span className="text-xs text-muted-foreground">Health score (0–100)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={score}
-                      onChange={(e) => setScore(e.target.value)}
-                      className={`${field} mt-1.5`}
-                    />
-                  </label>
                   <label className="text-sm">
                     <span className="text-xs text-muted-foreground">Credits balance ($)</span>
                     <input
