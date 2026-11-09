@@ -9,7 +9,7 @@ import { defaultBenefitModules } from "@/lib/membership-benefits-content";
 import { sendPublishedVisitReportEmail } from "@/lib/notifications.functions";
 import { formatDateTime, type Appointment } from "@/lib/portal";
 import {
-  checkStates, conditions, emptyVisitReport, loadVisitDraft, readVisitReport, saveTechnicianDraft, saveVisitDraft, uploadVisitReportPhoto,
+  taskCompleted, emptyVisitReport, loadVisitDraft, readVisitReport, saveTechnicianDraft, saveVisitDraft, uploadVisitReportPhoto,
   type VisitReport,
 } from "@/lib/visit-workspace";
 
@@ -52,7 +52,12 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
   const [report, setReport] = useState<VisitReport>(() => {
     const source = initial?.report ?? published ?? { ...emptyVisitReport, summary: visit.visit_report ?? "" };
     const taskPhotos = new Set(source.checks.flatMap((check) => check.photos ?? []));
-    return { ...source, photos: source.photos.filter((path) => !taskPhotos.has(path)) };
+    return {
+      ...source,
+      photos: source.photos.filter((path) => !taskPhotos.has(path)),
+      checks: technician ? [...source.checks].sort((a, b) =>
+        Number(b.status === "Needs attention") - Number(a.status === "Needs attention")) : source.checks,
+    };
   });
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [revision, setRevision] = useState(initial?.revision ?? null);
@@ -103,10 +108,7 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
 
   const updateCheck = (index: number, changes: Partial<VisitReport["checks"][number]>) =>
     setReport((current) => ({ ...current, checks: current.checks.map((check, i) =>
-      i === index ? { ...check, ...changes,
-        ...(changes.status !== undefined && changes.status !== "Needs attention" ? { urgent: false } : {}),
-        ...(!("condition" in changes) && "status" in changes ? { condition: undefined } : {}),
-      } : check) }));
+      i === index ? { ...check, ...changes } : check) }));
 
   const preview = {
     ...report,
@@ -114,8 +116,9 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
       check.status ? [check] : check.note?.trim() || check.photos?.length
         ? [{ ...check, status: "Needs attention" as const }] : []),
   };
-  const checkableTasks = report.checks.filter((task) => !task.condition && (task.status === null || task.status === "Completed"));
-  const allChecked = checkableTasks.length > 0 && checkableTasks.every((task) => task.status === "Completed");
+  const isRoutine = (task: VisitReport["checks"][number]) => !healthCheck(task.title) &&
+    !task.condition && !task.fixed && !task.urgent && (task.status === null || task.status === "Completed");
+  const routineRemaining = report.checks.some((task) => isRoutine(task) && !taskCompleted(task));
   const followUpCount = report.checks.filter((task) => task.status === "Needs attention").length;
   const photoCount = report.photos.length + report.checks.reduce((count, check) => count + (check.photos?.length ?? 0), 0);
   const uploadTaskPhoto = (index: number, file: File) => run(async () => {
@@ -135,7 +138,7 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
       setNotice("This task already has an outcome or note on the next visit. Open that visit to review it.");
       return;
     }
-    const followUp = { ...existing, title: task.title, status: "Needs attention" as const, note };
+    const followUp = { ...existing, title: task.title, status: "Needs attention" as const, completed: false, note };
     const nextReport = {
       ...target,
       checks: existing ? target.checks.map((check) => check === existing ? followUp : check)
@@ -237,23 +240,14 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
             <details open>
               <summary className="cursor-pointer font-semibold">
                 Checklist <span className="ml-2 inline-block rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-900">
-                  {report.checks.filter((item) => item.status === "Completed").length} of {report.checks.length} complete
+                  {report.checks.filter(taskCompleted).length} of {report.checks.length} complete
                 </span>
               </summary>
-              <label className="mt-3 flex w-fit items-center gap-2 text-sm font-semibold">
-                <input type="checkbox" className="size-4" checked={allChecked} disabled={!checkableTasks.length}
-                  onChange={(event) => {
-                    const checked = event.target.checked;
-                    setReport((current) => ({
-                      ...current,
-                      checks: current.checks.map((task) => checked && !task.condition && task.status === null
-                        ? { ...task, status: "Completed" }
-                        : !checked && !task.condition && task.status === "Completed" ? { ...task, status: null } : task),
-                    }));
-                  }} />
-                Check all
-              </label>
-              <p className="mt-1 text-xs text-muted-foreground">Rated tasks and tasks marked Needs attention or Not applicable keep their outcome.</p>
+              <button type="button" className={`${button} mt-3`} disabled={!routineRemaining}
+                onClick={() => setReport((current) => ({
+                  ...current, checks: current.checks.map((task) => isRoutine(task)
+                    ? { ...task, completed: true, status: "Completed" } : task),
+                }))}>Mark routine tasks complete</button>
               {!technician && <p className="mt-1 text-xs text-muted-foreground">{nextVisit
                 ? `Follow-ups go to the draft for ${formatDateTime(nextVisit.scheduled_at)}.`
                 : "Schedule a later visit to carry tasks forward."}</p>}
@@ -264,42 +258,47 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
               <ol className={`mt-2 divide-y divide-border rounded-sm border border-border px-3 ${technician ? "" : "max-h-[28rem] overflow-y-auto"}`}>
                 {report.checks.map((item, i) => (!followUpsOnly || item.status === "Needs attention") && (
                   <li key={i} className="space-y-2 py-3 text-sm">
-                    <label className="flex items-start gap-2">
-                      <input type="checkbox" className="mt-1 size-4" checked={item.status === "Completed"}
-                        onChange={(event) => updateCheck(i, { status: event.target.checked ? "Completed" : null })} />
+                    <label className="flex min-h-10 items-center gap-3 font-medium">
+                      <input type="checkbox" className="size-5 shrink-0" checked={taskCompleted(item)}
+                        aria-label={`Completed: ${item.title}`}
+                        disabled={item.status === "Not applicable" || item.condition === "Couldn’t check"}
+                        onChange={(event) => {
+                          const completed = event.target.checked;
+                          updateCheck(i, { completed, status: item.status === "Needs attention" ? item.status
+                            : completed || item.fixed || item.condition === "Good" ? "Completed" : null });
+                        }} />
                       {item.title}
                     </label>
-                    {item.status !== "Completed" && <select aria-label={`Outcome for ${item.title}`}
-                      className="min-h-10 rounded-sm border border-border bg-background px-2"
-                      value={item.status ?? ""} onChange={(event) => updateCheck(i, {
-                        status: checkStates.find((option) => option === event.target.value) ?? null,
-                      })}>
-                      <option value="">Not checked</option>
-                      <option>Needs attention</option>
-                      <option>Not applicable</option>
-                    </select>}
-                    {healthCheck(item.title) && <label className="flex flex-wrap items-center gap-2">
-                      Condition · {healthCheck(item.title)?.weight} points
-                      <select className="min-h-10 rounded-sm border border-border bg-background px-2"
-                        value={item.condition ?? ""} onChange={(event) => {
-                          const condition = conditions.find((value) => value === event.target.value);
-                          if (!condition) {
-                            updateCheck(i, { condition: undefined });
-                            return;
-                          }
-                          const status = condition === "Good" ? "Completed"
-                            : condition === "Not applicable" ? "Not applicable" : "Needs attention";
-                          updateCheck(i, { condition, status, urgent: condition === "Urgent issue" });
-                        }}>
-                        <option value="">Not rated</option>
-                        {conditions.map((condition) => <option key={condition}>{condition}</option>)}
-                      </select>
-                    </label>}
-                    {item.status === "Needs attention" && <label className="flex items-center gap-2 text-destructive">
-                      <input type="checkbox" checked={Boolean(item.urgent)} disabled={Boolean(item.condition)}
-                        onChange={(event) => updateCheck(i, { urgent: event.target.checked })} />
-                      Needs immediate attention
-                    </label>}
+                    <details>
+                      <summary className={`${button} cursor-pointer`}>
+                        {item.fixed ? "Fixed during visit" : item.urgent ? "Urgent" : item.condition
+                          ?? (item.status === "Needs attention" ? "Needs attention" : item.status === "Not applicable" ? "Not applicable" : "Flag issue")}
+                      </summary>
+                      <label className="mt-2 grid gap-1">Finding
+                        <select className="min-h-11 rounded-sm border border-border bg-background px-2"
+                          value={item.fixed ? "fixed" : item.urgent ? "urgent" : item.condition === "Couldn’t check" ? "missed"
+                            : item.status === "Not applicable" ? "na" : item.status === "Needs attention" ? "attention"
+                            : item.condition === "Good" ? "good" : ""}
+                          onChange={(event) => {
+                            const finding = event.target.value;
+                            const completed = !["missed", "na"].includes(finding) && taskCompleted(item);
+                            const condition = finding === "urgent" ? "Urgent issue" : finding === "attention" ? "Needs follow-up"
+                              : finding === "missed" ? "Couldn’t check" : finding === "na" ? "Not applicable"
+                              : finding === "good" || finding === "fixed" ? "Good" : undefined;
+                            updateCheck(i, { completed, condition, fixed: finding === "fixed", urgent: finding === "urgent",
+                              status: finding === "na" ? "Not applicable" : ["urgent", "attention", "missed"].includes(finding)
+                                ? "Needs attention" : completed || condition === "Good" ? "Completed" : null });
+                          }}>
+                          <option value="">No finding recorded</option>
+                          {healthCheck(item.title) && <option value="good">Good condition</option>}
+                          <option value="attention">Needs attention</option>
+                          <option value="urgent">Urgent</option>
+                          <option value="fixed">Fixed during visit</option>
+                          <option value="missed">Couldn’t check</option>
+                          <option value="na">Not applicable</option>
+                        </select>
+                      </label>
+                    </details>
                     <div className="flex flex-wrap items-start gap-2">
                       <details className="min-w-0">
                         <summary className={`${button} cursor-pointer`}>Notes{item.note?.trim() ? " ✓" : ""}</summary>
@@ -366,7 +365,7 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
         <section className="space-y-4 rounded-sm border border-border p-4">
           <h4 className="font-semibold">{technician ? "Review before submitting" : "Review before publishing"}</h4>
           <dl className="flex flex-wrap gap-4 text-sm">
-            <div><dt>Completed</dt><dd className="font-semibold">{preview.checks.filter((task) => task.status === "Completed").length}</dd></div>
+            <div><dt>Completed</dt><dd className="font-semibold">{preview.checks.filter(taskCompleted).length}</dd></div>
             <div><dt>Follow-up</dt><dd className="font-semibold">{preview.checks.filter((task) => task.status === "Needs attention").length}</dd></div>
             <div><dt>Not applicable</dt><dd className="font-semibold">{preview.checks.filter((task) => task.status === "Not applicable").length}</dd></div>
             <div><dt>Unchecked</dt><dd className="font-semibold">{report.checks.length - preview.checks.length}</dd></div>

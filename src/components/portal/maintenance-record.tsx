@@ -5,7 +5,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { formatDateTime, type Appointment } from "@/lib/portal";
-import { readVisitReport } from "@/lib/visit-workspace";
+import { readVisitReport, taskCompleted } from "@/lib/visit-workspace";
 
 const categories = [
   { id: "hvac", title: "HVAC filters", match: /^(check|replace) (approved )?HVAC filter/i },
@@ -73,7 +73,7 @@ export function MaintenanceRecord({ propertyId, visits, visitsLoading, visitsFai
   const entries = categories.map(({ id, title, match }) => {
     const details = records.data?.find((row) => row.category === id) ?? empty;
     const history = reports.flatMap(({ visit, report }) => {
-      const tasks = report?.checks.filter((check) => check.status === "Completed" && match.test(check.title)) ?? [];
+      const tasks = report?.checks.filter((check) => taskCompleted(check) && match.test(check.title)) ?? [];
       return tasks.length ? [{ visit, tasks, photos: report?.photos.length ?? 0 }] : [];
     });
     const matches = [title, details.location, details.specifications, details.notes,

@@ -55,7 +55,7 @@ import {
 } from "@/lib/portal";
 import { PhotoLightbox } from "@/components/portal/photo-lightbox";
 import { VisitReportContent } from "@/components/portal/visit-report";
-import { readVisitReport } from "@/lib/visit-workspace";
+import { readVisitReport, taskCompleted } from "@/lib/visit-workspace";
 import { canQuoteVisit, ClientPaidExtras } from "@/components/portal/paid-extras";
 import { listPropertyExtras } from "@/lib/paid-extras";
 import { ServiceRequests } from "@/components/portal/service-requests";
@@ -535,7 +535,7 @@ function DashboardPage() {
   const dayCounts = new Map<string, number>();
   for (const visit of appointments.data ?? []) {
     if (visit.status === "Cancelled") continue;
-    const completed = readVisitReport(visit.published_report)?.checks.filter((task) => task.status === "Completed").length ?? 0;
+    const completed = readVisitReport(visit.published_report)?.checks.filter(taskCompleted).length ?? 0;
     if (!completed) continue;
     const day = visitDay.format(new Date(visit.scheduled_at));
     dayCounts.set(day, (dayCounts.get(day) ?? 0) + completed);
@@ -553,7 +553,7 @@ function DashboardPage() {
   const attentionInvoices = (invoices.data ?? []).filter((invoice) =>
     invoice.status === "Due" && (!invoice.property_id || invoice.property_id === property?.id));
   const attentionIssues = (openItems.data ?? []).filter((issue) => !issue.resolved);
-  const latestTaskCount = readVisitReport(latestReport?.published_report)?.checks.filter((task) => task.status === "Completed").length;
+  const latestTaskCount = readVisitReport(latestReport?.published_report)?.checks.filter(taskCompleted).length;
   const urgentIssues = attentionIssues.filter((issue) => issue.priority === "High");
   const latestSummary = latestReport ? readVisitReport(latestReport.published_report)?.summary || latestReport.visit_report : null;
 
@@ -755,6 +755,40 @@ function DashboardPage() {
                   ))}
                 </section>
               )}
+              {(pendingExtras.length > 0 || attentionInvoices.length > 0 || attentionIssues.some((issue) => issue.priority !== "High") ||
+                extras.isError || invoices.isError || openItems.isError) && (
+              <section className="panel rounded-sm p-6" aria-labelledby="client-attention">
+                <h2 id="client-attention" className="font-display text-xl">Needs your attention</h2>
+                {(extras.isPending || invoices.isPending || openItems.isPending) &&
+                  <p role="status" className="mt-3 text-sm">Checking your updates…</p>}
+                {(extras.isError || invoices.isError || openItems.isError) &&
+                  <p role="alert" className="mt-3 text-sm">Some updates could not be loaded. Try refreshing.</p>}
+                <ul className="mt-3 space-y-3">
+                  {pendingExtras.map((quote) => (
+                    <li key={quote.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
+                      <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Quote for {formatMoney(quote.amount_cents)}</p>
+                        <p className="break-words text-sm text-muted-foreground">{quote.scope}</p></div>
+                      <Link to="/dashboard" onClick={() => setTab("appointments")} search={{ quote: quote.id }} className="text-sm text-primary underline">Review quote</Link>
+                    </li>
+                  ))}
+                  {attentionInvoices.map((invoice) => (
+                    <li key={invoice.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
+                      <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{formatMoney(invoice.amount_cents)} due</p>
+                        <p className="break-words text-sm text-muted-foreground">{invoice.description}</p></div>
+                      <Link to="/dashboard" onClick={() => setTab("membership")} search={{ invoice: invoice.id }} className="text-sm text-primary underline">View invoice</Link>
+                    </li>
+                  ))}
+                  {attentionIssues.filter((issue) => issue.priority !== "High").map((issue) => (
+                    <li key={issue.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
+                      <div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{issue.title}</p>
+                        <p className="text-sm text-muted-foreground">{issue.progress_status}</p></div>
+                      <Link to="/dashboard" onClick={() => setTab("overview")} search={{ issue: issue.id }} className="text-sm text-primary underline">View issue</Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              )}
               <section id="client-home" tabIndex={-1} className="panel rounded-sm p-6" aria-labelledby="next-visit-heading">
                 <p className={label}>Your home, taken care of</p>
                 <h2 id="next-visit-heading" className="font-display mt-3 text-2xl">Your next visit</h2>
@@ -832,40 +866,6 @@ function DashboardPage() {
                     <p className="mt-1 text-sm text-muted-foreground">Available credit</p>
                   </div>
                 </div>
-              <section className="panel rounded-sm p-6" aria-labelledby="client-attention">
-                <h2 id="client-attention" className="font-display text-xl">Needs your attention</h2>
-                {(extras.isPending || invoices.isPending || openItems.isPending) &&
-                  <p role="status" className="mt-3 text-sm">Checking your updates…</p>}
-                {(extras.isError || invoices.isError || openItems.isError) &&
-                  <p role="alert" className="mt-3 text-sm">Some updates could not be loaded. Try refreshing.</p>}
-                <ul className="mt-3 space-y-3">
-                  {pendingExtras.map((quote) => (
-                    <li key={quote.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
-                      <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Quote for {formatMoney(quote.amount_cents)}</p>
-                        <p className="break-words text-sm text-muted-foreground">{quote.scope}</p></div>
-                      <Link to="/dashboard" onClick={() => setTab("appointments")} search={{ quote: quote.id }} className="text-sm text-primary underline">Review quote</Link>
-                    </li>
-                  ))}
-                  {attentionInvoices.map((invoice) => (
-                    <li key={invoice.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
-                      <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{formatMoney(invoice.amount_cents)} due</p>
-                        <p className="break-words text-sm text-muted-foreground">{invoice.description}</p></div>
-                      <Link to="/dashboard" onClick={() => setTab("membership")} search={{ invoice: invoice.id }} className="text-sm text-primary underline">View invoice</Link>
-                    </li>
-                  ))}
-                  {attentionIssues.map((issue) => (
-                    <li key={issue.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
-                      <div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{issue.title}</p>
-                        <p className="text-sm text-muted-foreground">{issue.progress_status}</p></div>
-                      <Link to="/dashboard" onClick={() => setTab("overview")} search={{ issue: issue.id }} className="text-sm text-primary underline">View issue</Link>
-                    </li>
-                  ))}
-                </ul>
-                {extras.isSuccess && invoices.isSuccess && openItems.isSuccess &&
-                  !pendingExtras.length && !attentionInvoices.length && !attentionIssues.length &&
-                  <p className="mt-3 text-sm text-muted-foreground">You’re up to date. There are no pending quotes, invoices, or open issues for this home.</p>}
-              </section>
-
               <div className="grid gap-6 lg:grid-cols-2">
                 <section className="panel rounded-sm p-6" aria-labelledby="recent-activity">
                   <h2 id="recent-activity" className={label}>

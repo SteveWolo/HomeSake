@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { visitPhotoLinks, type VisitReport } from "@/lib/visit-workspace";
+import { taskCompleted, visitPhotoLinks, type VisitReport } from "@/lib/visit-workspace";
 
 export function VisitReportContent({ report, reviewing = false }: { report: VisitReport; reviewing?: boolean }) {
   const taskPaths = report.checks.flatMap((task) => task.photos ?? []);
@@ -26,7 +26,8 @@ export function VisitReportContent({ report, reviewing = false }: { report: Visi
   const sections = [
     { label: "Needs immediate attention", tasks: report.checks.filter((task) => task.status === "Needs attention" && task.urgent), open: true },
     { label: "Needs follow-up", tasks: report.checks.filter((task) => task.status === "Needs attention" && !task.urgent), open: true },
-    { label: "Completed for you", tasks: report.checks.filter((task) => task.status === "Completed"), open: false },
+    { label: "Completed for you", tasks: report.checks.filter((task) => task.status === "Completed" && taskCompleted(task)), open: false },
+    { label: "Other findings", tasks: report.checks.filter((task) => task.status === "Completed" && !taskCompleted(task)), open: false },
     { label: "Not applicable", tasks: report.checks.filter((task) => task.status === "Not applicable"), open: false },
   ];
   return (
@@ -38,7 +39,7 @@ export function VisitReportContent({ report, reviewing = false }: { report: Visi
             <summary className="cursor-pointer font-semibold">{label} ({checks.length})</summary>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
               {checks.map((check, i) => <li key={i} className="mb-2">
-                <p>{check.title}{check.condition ? ` · ${check.condition}` : ""}</p>
+                <p>{check.title}{check.fixed ? " · Fixed during visit" : check.condition ? ` · ${check.condition}` : ""}{check.status === "Needs attention" && taskCompleted(check) ? " · Check completed" : ""}</p>
                 {check.note?.trim() && <p className="whitespace-pre-wrap break-words text-muted-foreground">{check.note}</p>}
                 {check.photos?.length ? gallery(check.photos, check.title) : null}
               </li>)}
@@ -47,7 +48,7 @@ export function VisitReportContent({ report, reviewing = false }: { report: Visi
         );
       })}
       {report.summary && <p className="whitespace-pre-wrap break-words text-sm">{report.summary}</p>}
-      {report.checks.length > 0 && <p className="font-semibold text-primary">{report.checks.filter((task) => task.status === "Completed").length} tasks completed on this visit</p>}
+      {report.checks.length > 0 && <p className="font-semibold text-primary">{report.checks.filter(taskCompleted).length} tasks completed on this visit</p>}
       {photos.isError && <p role="alert" className="text-sm">Report photos could not be loaded.</p>}
       {generalPaths.length > 0 && gallery(generalPaths, "Visit report")}
     </div>

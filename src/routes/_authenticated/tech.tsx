@@ -26,6 +26,7 @@ function TechnicianDashboard() {
   const navigate = useNavigate();
   const cache = useQueryClient();
   const [propertyId, setPropertyId] = useState("");
+  const [scheduleTab, setScheduleTab] = useState<"Today" | "Upcoming" | "Earlier">("Today");
   const [selected, setSelected] = useState<string | null>(null);
   const jobs = useQuery({
     queryKey: ["technician-jobs", user.id],
@@ -48,8 +49,8 @@ function TechnicianDashboard() {
   const today = localDay.format(new Date());
   const sections = [
     { title: "Today", visits: visibleJobs.filter((item) => localDay.format(new Date(item.scheduled_at)) === today) },
-    { title: "Upcoming appointments", visits: visibleJobs.filter((item) => localDay.format(new Date(item.scheduled_at)) > today) },
-    { title: "Earlier scheduled visits", visits: visibleJobs.filter((item) => localDay.format(new Date(item.scheduled_at)) < today) },
+    { title: "Upcoming", visits: visibleJobs.filter((item) => localDay.format(new Date(item.scheduled_at)) > today) },
+    { title: "Earlier", visits: visibleJobs.filter((item) => localDay.format(new Date(item.scheduled_at)) < today) },
   ];
 
   return (
@@ -77,10 +78,16 @@ function TechnicianDashboard() {
             </option>)}
           </select>
         </label>
-        {sections.map(({ title, visits }) => (visits.length > 0 || title === "Upcoming appointments") && (
+        <nav aria-label="Visit schedule" className="flex gap-2">
+          {sections.map(({ title, visits }) => <button key={title} type="button"
+            aria-pressed={scheduleTab === title}
+            className={`min-h-11 rounded-sm border border-border px-3 text-sm ${scheduleTab === title ? "bg-primary text-primary-foreground" : ""}`}
+            onClick={() => setScheduleTab(title as typeof scheduleTab)}>{title} ({visits.length})</button>)}
+        </nav>
+        {sections.filter(({ title }) => title === scheduleTab).map(({ title, visits }) => (
           <section key={title} className="space-y-3">
             <h2 className="font-display text-xl">{title}</h2>
-            {!visits.length && <p className="text-sm text-muted-foreground">No upcoming visits for this selection.</p>}
+            {!visits.length && <p className="text-sm text-muted-foreground">No visits in this section for this selection.</p>}
             {visits.map((item) => (
               <article className="panel flex flex-wrap items-center justify-between gap-3 p-4" key={item.id}>
                 <div className="min-w-0 break-words">

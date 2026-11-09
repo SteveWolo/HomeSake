@@ -73,6 +73,7 @@ export function HeroAlt() {
               {hero.primaryCta.label}
               <ArrowUpRight className="size-4 transition-transform duration-300 group-hover:rotate-45" />
             </a>
+            <a href="#coverage" className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-foreground underline">Check your ZIP</a>
             {hero.video?.buttonLabel && hero.video?.src && (
               <button
                 type="button"

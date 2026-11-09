@@ -1,4 +1,4 @@
-import { ArrowUpRight, CalendarDays, CheckCircle2 } from "lucide-react";
+import { CalendarDays, CheckCircle2 } from "lucide-react";
 
 import { useSiteContent } from "@/hooks/use-site-content";
 
@@ -14,7 +14,7 @@ export function HomeHealth() {
         <div className="panel grain rounded-sm p-8 lg:p-10">
           <div className="flex flex-col gap-3 border-b border-border/70 pb-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="eyebrow">{health.eyebrow}</p>
+              <p className="eyebrow">Sample report</p>
               <h2 id="home-health-title" className="font-display mt-3 text-3xl lg:text-4xl">
                 {health.title}
               </h2>
@@ -82,13 +82,13 @@ export function HomeHealth() {
               </p>
               <p className="font-display mt-3 text-3xl leading-none">{health.nextVisitDate}</p>
               <p className="mt-2 text-xs text-muted-foreground">{health.nextVisitNote}</p>
-              <a
-                href={health.cta.href}
-                className="group mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:gap-3"
-              >
-                {health.cta.label}
-                <ArrowUpRight className="size-4 transition-transform group-hover:rotate-45" />
-              </a>
+              <details className="mt-4 text-sm">
+                <summary className="cursor-pointer font-semibold text-primary">See sample visit details</summary>
+                <ul className="mt-2 space-y-2">
+                  <li><strong>Completed</strong> · Checked the HVAC filter and tested smoke detectors.</li>
+                  <li><strong>Needs attention</strong> · Loose cabinet handle. Recheck at the next visit.</li>
+                </ul>
+              </details>
             </div>
           </div>
         </div>
