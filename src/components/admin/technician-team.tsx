@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { adminCreateTechnician } from "@/lib/admin-technicians.functions";
-import type { Appointment } from "@/lib/portal";
+import type { Appointment, Property } from "@/lib/portal";
 
 const field = "min-h-11 rounded-sm border border-border bg-background px-3 text-sm";
 const button = "rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50";
@@ -41,7 +41,7 @@ export function TechnicianTeam() {
   return (
     <section className="panel rounded-sm p-6" aria-labelledby="technician-team">
       <h2 id="technician-team" className="font-display text-xl">Technicians</h2>
-      <p className="mt-2 text-sm text-muted-foreground">Create a separate account for each technician. Assign visits in the visit workspace.</p>
+      <p className="mt-2 text-sm text-muted-foreground">Create a separate account for each technician. Set a default technician on a client property or assign a specific visit in its workspace.</p>
       <Link to="/tech-login" className="mt-2 inline-block text-sm text-primary underline">Technician sign-in page</Link>
       {team.isError && <p role="alert" className="mt-2 text-sm">Could not load the team.</p>}
       {!!team.data?.length && <ul className="mt-3 list-disc pl-5 text-sm">
@@ -88,5 +88,41 @@ export function AssignTechnician({ visit, onAssigned }: { visit: Appointment; on
       {save.error && <p role="alert" className="text-sm text-destructive">{save.error.message}</p>}
       {save.isSuccess && <p role="status" className="text-sm">Assignment saved.</p>}
     </div>
+  );
+}
+
+export function AssignPropertyTechnician({ property, onAssigned }: { property: Property; onAssigned: () => Promise<unknown> }) {
+  const team = useTeam();
+  const save = useMutation({
+    mutationFn: async (value: string) => {
+      const { data, error } = await supabase.rpc("set_property_technician", {
+        property_key: property.id, technician_key: value || null,
+      });
+      if (error) throw new Error(error.message);
+      await onAssigned();
+      return data;
+    },
+  });
+  return (
+    <section className="panel rounded-sm p-6" aria-labelledby="property-technician">
+      <h2 id="property-technician" className="font-display text-xl">Client’s technician</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        The default applies to future bookings and unassigned upcoming visits for this property.
+        Existing assignments stay on their visits.
+      </p>
+      <label className="mt-4 grid gap-1 text-sm">Default technician
+        <select className={field} disabled={!team.isSuccess || save.isPending}
+          value={property.default_technician_id ?? ""} onChange={(event) => save.mutate(event.target.value)}>
+          <option value="">No default technician</option>
+          {team.data?.map((tech) => <option key={tech.user_id} value={tech.user_id}>{tech.name}</option>)}
+        </select>
+      </label>
+      {team.isError && <p role="alert" className="mt-2 text-sm">Could not load technicians.</p>}
+      {save.isPending && <p role="status" className="mt-2 text-sm">Saving assignment…</p>}
+      {save.error && <p role="alert" className="mt-2 text-sm text-destructive">{save.error.message}</p>}
+      {save.isSuccess && <p role="status" className="mt-2 text-sm">
+        Default technician saved. {save.data > 0 && `${save.data} upcoming ${save.data === 1 ? "visit" : "visits"} assigned.`}
+      </p>}
+    </section>
   );
 }

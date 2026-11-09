@@ -350,6 +350,7 @@ export type Database = {
       }
       properties: {
         Row: {
+          default_technician_id: string | null
           address: string
           created_at: string
           credits_cents: number
@@ -364,6 +365,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          default_technician_id?: string | null
           address: string
           created_at?: string
           credits_cents?: number
@@ -378,6 +380,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          default_technician_id?: string | null
           address?: string
           created_at?: string
           credits_cents?: number
@@ -529,6 +532,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      set_property_technician: { Args: { property_key: string; technician_key: string | null }; Returns: number }
       technician_jobs: { Args: Record<never, never>; Returns: Json }
       save_technician_draft: {
         Args: { visit_id: string; expected_revision: string | null; report_data: Json; submit_for_review: boolean }
