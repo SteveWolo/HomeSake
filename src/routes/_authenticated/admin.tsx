@@ -1,3 +1,4 @@
+import { readVisitReport } from "@/lib/visit-workspace";
 import { AssignPropertyTechnician, AssignTechnician, TechnicianTeam } from "@/components/admin/technician-team";
 import { MaintenanceRecord } from "@/components/portal/maintenance-record";
 import { AdminIssueProgress, IssueHistory } from "@/components/portal/issue-progress";
@@ -36,7 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { formatBytes } from "@/lib/image-compress";
 import { adminCreateClient, adminDeleteClient } from "@/lib/admin-clients.functions";
-import { sidebarHeading, sidebarItem, sidebarShell } from "@/lib/portal-ui";
+import { mobilePortalNav, mobilePortalTab, sidebarHeading, sidebarItem, sidebarShell } from "@/lib/portal-ui";
 import {
   incrementTasksCompleted,
   parseHomeNotes,
@@ -170,6 +171,11 @@ function TodayVisits({
                     {showDate && `${workdayHeading.format(date)} · `}
                     {visitTime.format(date)} · {visit.status}
                   </p>
+                  {id === "today-visits" && (
+                    <span className={`mt-2 inline-block rounded-full px-2 py-1 text-xs font-semibold ${visit.technician_id ? "bg-emerald-100 text-emerald-900" : "bg-muted text-muted-foreground"}`}>
+                      {visit.technician_id ? "Technician assigned" : "Unassigned"}
+                    </span>
+                  )}
                 </div>
                 <button type="button" className={ghostBtn} onClick={() => onOpen(visit)}>
                   {id === "today-visits" && visit.status !== "Completed" ? "Start visit" : "Open visit workspace"}
@@ -412,6 +418,8 @@ function AdminPage() {
   const createClientFn = useServerFn(adminCreateClient);
   const deleteClientFn = useServerFn(adminDeleteClient);
 
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [scheduleShortcut, setScheduleShortcut] = useState(false);
   const [tab, setTab] = useState<Tab>("today");
   const [today, setToday] = useState(() => new Date());
   const [clientSearch, setClientSearch] = useState("");
@@ -542,6 +550,27 @@ function AdminPage() {
     queryFn: () => listAppointments(property!.id),
     enabled: !!property,
   });
+
+  const reviewQueue = useQuery({
+    queryKey: ["admin-technician-review"],
+    enabled: isAdmin && tab === "today" && !activeId,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const [drafts, issues] = await Promise.all([
+        supabase.from("visit_report_drafts").select("appointment_id, technician_submitted_at, report").not("technician_submitted_at", "is", null),
+        supabase.from("open_items").select("id, property_id, title").eq("priority", "High").eq("resolved", false),
+      ]);
+      if (drafts.error) throw new Error(drafts.error.message);
+      if (issues.error) throw new Error(issues.error.message);
+      return { drafts: drafts.data, issues: issues.data };
+    },
+  });
+
+  useEffect(() => {
+    if (!scheduleShortcut || !property) return;
+    document.getElementById("schedule")?.scrollIntoView({ block: "start" });
+    setScheduleShortcut(false);
+  }, [scheduleShortcut, property]);
 
   const requests = useQuery({
     queryKey: ["admin-service-requests"],
@@ -699,6 +728,16 @@ function AdminPage() {
   const visitsAwaitingReport = (allAppointments.data ?? []).filter(
     (visit) => visit.status === "Completed" && !visit.published_report && !visit.visit_report?.trim(),
   );
+  const reviews = (reviewQueue.data?.drafts ?? []).flatMap((draft) => {
+    const visit = allAppointments.data?.find((item) => item.id === draft.appointment_id);
+    if (!visit || visit.status === "Cancelled" || !draft.technician_submitted_at) return [];
+    const publishedAt = readVisitReport(visit.published_report)?.publishedAt;
+    if (publishedAt && Date.parse(publishedAt) >= Date.parse(draft.technician_submitted_at)) return [];
+    const urgent = readVisitReport(draft.report)?.checks.filter((task) => task.status === "Needs attention" && task.urgent) ?? [];
+    return [{ visit, urgent }];
+  });
+  const urgentIssues = reviewQueue.data?.issues ?? [];
+  const urgentCount = urgentIssues.length + reviews.reduce((count, item) => count + item.urgent.length, 0);
   const pendingRequests = requests.data?.filter((request) => request.status === "Pending") ?? [];
 
   const search = clientSearch.trim().toLowerCase();
@@ -709,14 +748,14 @@ function AdminPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background lg:flex">
+    <div className="portal-redesign min-h-screen pb-20 lg:flex lg:pb-0">
       <aside className={sidebarShell}>
-        <div className="flex h-20 items-center border-b border-border/50 px-6">
+        <div className="portal-brand flex h-16 items-center px-4 lg:h-20 lg:px-6">
           <Link to="/" aria-label="Home Harmony Hub — home">
             <img src={logoUrl} alt="Home Harmony Hub logo" className="h-9 w-auto" />
           </Link>
         </div>
-        <div className="px-3 pb-6">
+        <div className="hidden px-3 pb-6 lg:block">
           <p className={sidebarHeading}>Operations</p>
           <nav className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
             {tabs
@@ -789,11 +828,33 @@ function AdminPage() {
 
       </aside>
 
-      <div className="flex-1">
+      <nav className={mobilePortalNav} aria-label="Admin portal">
+        {(["today", "clients", "appointments"] as const).map((id, index) => (
+          <button key={id} type="button" className={mobilePortalTab(tab === id && !moreOpen)}
+            aria-current={tab === id && !moreOpen ? "page" : undefined}
+            onClick={() => { setTab(id); setActiveId(null); setMoreOpen(false); window.scrollTo(0, 0); }}>
+            {["Today", "Clients", "Schedule"][index]}
+          </button>
+        ))}
+        <button type="button" className={mobilePortalTab(moreOpen || tab === "invoices" || tab === "site")}
+          aria-expanded={moreOpen} onClick={() => setMoreOpen(!moreOpen)}>More</button>
+        {moreOpen && <div className="panel absolute right-2 bottom-full grid min-w-44 p-2">
+          {(["invoices", "site"] as const).map((id) => (
+            <button key={id} type="button" className="min-h-11 px-3 text-left text-sm"
+              onClick={() => { setTab(id); setActiveId(null); setMoreOpen(false); window.scrollTo(0, 0); }}>
+              {tabs.find((item) => item.id === id)?.label}
+            </button>
+          ))}
+          <button type="button" className="min-h-11 px-3 text-left text-sm" onClick={signOut}>Sign out</button>
+        </div>}
+      </nav>
+
+      <div className="min-w-0 flex-1">
         <header className="grid gap-4 border-b border-border px-4 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-start lg:px-10">
           <div className="min-w-0">
             <p className="eyebrow">Admin &amp; contractor portal</p>
             <select
+              id="admin-active-property"
               aria-label="Select active property"
               value={activeId ?? ""}
               onChange={(e) => setActiveId(e.target.value || null)}
@@ -825,7 +886,7 @@ function AdminPage() {
 
         <main className="space-y-6 px-4 py-8 sm:px-6 lg:px-10">
           <h1 className="font-display text-2xl break-words sm:text-3xl">
-            {property ? `${ownerLabel(property.owner_id)} — property overview` : tabs.find((t) => t.id === tab)?.label}
+            {property ? `${ownerLabel(property.owner_id)} — property overview` : tab === "today" ? "Operations" : tabs.find((t) => t.id === tab)?.label}
           </h1>
 
           {saved && <p role="status" className="text-sm text-primary">{saved}</p>}
@@ -853,6 +914,30 @@ function AdminPage() {
           {!property && tab === "today" && (
             <>
               <p className="text-sm text-muted-foreground">{workdayHeading.format(today)} · Central time</p>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" className={btn} onClick={() => {
+                  setTab("clients");
+                  window.requestAnimationFrame(() => document.getElementById("new-client")?.scrollIntoView({ block: "start" }));
+                }}>Add client</button>
+                <button type="button" className={btn} onClick={() => {
+                  setScheduleShortcut(true);
+                  document.getElementById("admin-active-property")?.focus();
+                }}>Schedule visit</button>
+              </div>
+              {scheduleShortcut && <p className="text-sm">Choose a client property above to open its scheduling form.</p>}
+              {reviewQueue.isError && <p role="alert" className="text-sm">Could not load the review queue or urgent findings.</p>}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <a href="#technician-reviews" className="panel flex min-h-12 items-center justify-between gap-2 p-4 font-semibold">
+                  Reports to review <span className="rounded-full bg-primary px-2 py-1 text-sm text-primary-foreground">
+                    {reviewQueue.isSuccess ? reviews.length : "—"}
+                  </span>
+                </a>
+                <a href="#admin-urgent-findings" className="flex min-h-12 items-center justify-between gap-2 rounded-lg border border-destructive bg-destructive/5 p-4 font-semibold text-destructive">
+                  Urgent findings <span className="rounded-full bg-destructive px-2 py-1 text-sm text-destructive-foreground">
+                    {reviewQueue.isSuccess ? urgentCount : "—"}
+                  </span>
+                </a>
+              </div>
               <nav aria-label="Today shortcuts" className="flex flex-wrap gap-2">
                 <a href="#today-visits" className={ghostBtn}>Appointments ({todayVisits.length})</a>
                 <a href="#service-requests" className={ghostBtn}>Pending requests ({pendingRequests.length})</a>
@@ -863,6 +948,35 @@ function AdminPage() {
                 empty="No appointments scheduled for today." propertyLabel={propertyLabel} onOpen={openPropertyVisit} />
             </>
           )}
+
+          {!property && tab === "today" && <>
+            <TodayVisits id="technician-reviews" title="Reports to review" visits={reviews.map(({ visit }) => visit)}
+              loading={reviewQueue.isPending || allAppointments.isPending}
+              failed={reviewQueue.isError || allAppointments.isError} empty="No technician reports waiting for review."
+              showDate propertyLabel={propertyLabel} onOpen={openPropertyVisit} />
+            <section className="panel p-6" aria-labelledby="admin-urgent-findings">
+              <h2 id="admin-urgent-findings" className="font-display text-xl text-destructive">Urgent findings</h2>
+              {reviewQueue.isPending && <p role="status" className="mt-2 text-sm">Loading urgent findings…</p>}
+              {reviewQueue.isSuccess && urgentCount === 0 && <p className="mt-2 text-sm text-muted-foreground">No open urgent issues or urgent findings in submitted drafts.</p>}
+              <ul className="mt-3 space-y-3">
+                {reviews.flatMap(({ visit, urgent }) => urgent.map((task, index) => (
+                  <li key={`${visit.id}-${index}`} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                    <span>{task.title} · {propertyLabel(visit.property_id)}</span>
+                    <button type="button" className={ghostBtn} onClick={() => openPropertyVisit(visit)}>Review draft</button>
+                  </li>
+                )))}
+                {urgentIssues.map((issue) => (
+                  <li key={issue.id} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                    <span>{issue.title} · {propertyLabel(issue.property_id)}</span>
+                    <button type="button" className={ghostBtn} onClick={() => {
+                      setTab("clients"); setActiveId(issue.property_id);
+                      window.requestAnimationFrame(() => document.getElementById("recommendations")?.scrollIntoView({ block: "start" }));
+                    }}>Open property issues</button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </>}
 
           {(property || tab === "today" || (tab === "clients" && (requests.isError || pendingRequests.length > 0))) && (
             <section className="panel rounded-sm p-6" aria-labelledby="service-requests">
@@ -1129,7 +1243,7 @@ function AdminPage() {
                     <li key={a.id} className="flex gap-3">
                       <CheckCircle2
                         className={`mt-0.5 size-4 shrink-0 ${
-                          a.status === "Completed" ? "text-emerald-400" : "text-muted-foreground"
+                          a.status === "Completed" ? "text-emerald-700" : "text-muted-foreground"
                         }`}
                       />
                       <div>
@@ -1205,7 +1319,7 @@ function AdminPage() {
                   <ul className="mt-5 space-y-3">
                     {(activity.data ?? []).map((a) => (
                       <li key={a.id} className="flex items-start gap-3">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" />
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700" />
                         <div className="flex-1">
                           <p className="text-sm">{a.title}</p>
                           <p className="text-xs text-muted-foreground">
@@ -1434,7 +1548,7 @@ function AdminPage() {
                           </span>
                           <span
                             className={`text-[11px] uppercase ${
-                              i.status === "Paid" ? "text-emerald-400" : "text-destructive"
+                              i.status === "Paid" ? "text-emerald-700" : "text-destructive"
                             }`}
                           >
                             {i.status}

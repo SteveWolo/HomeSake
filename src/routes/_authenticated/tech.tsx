@@ -53,10 +53,11 @@ function TechnicianDashboard() {
   ];
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-3xl">My visits</h1>
-        <button type="button" className="underline" onClick={async () => {
+    <div className="portal-redesign min-h-screen">
+    <main className="mx-auto max-w-3xl space-y-4 px-4 pb-8">
+      <header className="portal-brand -mx-4 flex items-center justify-between gap-3 px-4 py-4 sm:mx-0 sm:rounded-b-lg">
+        <h1 className="font-display text-3xl">{job ? "Visit checklist" : "My jobs"}</h1>
+        <button type="button" className="min-h-11 text-sm underline" onClick={async () => {
           await supabase.auth.signOut();
           cache.clear();
           await navigate({ to: "/tech-login", replace: true });
@@ -81,24 +82,26 @@ function TechnicianDashboard() {
             <h2 className="font-display text-xl">{title}</h2>
             {!visits.length && <p className="text-sm text-muted-foreground">No upcoming visits for this selection.</p>}
             {visits.map((item) => (
-              <article className="panel rounded-sm p-4" key={item.id}>
+              <article className="panel flex flex-wrap items-center justify-between gap-3 p-4" key={item.id}>
+                <div className="min-w-0 break-words">
                 <h3 className="font-semibold">{item.service}</h3>
                 <p className="text-sm">{formatDateTime(item.scheduled_at)}</p>
                 {item.client_name && <p className="mt-1 font-medium">{item.client_name}</p>}
                 <p className="text-sm">{item.address}</p>
                 {item.draft?.submittedAt && <p className="text-sm text-primary">Submitted for review</p>}
-                <button type="button" className="mt-3 min-h-11 rounded-full bg-primary px-4 py-2 text-primary-foreground"
-                  onClick={() => { setSelected(item.id); window.scrollTo(0, 0); }}>Open visit checklist</button>
+                </div>
+                <button type="button" className="min-h-11 rounded-full bg-primary px-4 py-2 text-primary-foreground"
+                  onClick={() => { setSelected(item.id); window.scrollTo(0, 0); }}>Open checklist</button>
               </article>
             ))}
           </section>
         ))}
       </>}
       {job && <section className="panel rounded-sm p-4">
-        <button type="button" className="mb-3 underline" onClick={() => setSelected(null)}>Back to clients and visits</button>
+        <button type="button" className="mb-3 min-h-11 text-sm underline" onClick={() => setSelected(null)}>Back to clients and visits</button>
         <h2 className="text-lg font-semibold">{job.client_name || job.address}</h2>
         {job.client_name && <p className="text-sm">{job.address}</p>}
-        <a className="text-primary underline" href={`https://maps.apple.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noreferrer">Directions</a>
+        <a className="mt-2 inline-flex min-h-11 items-center rounded-sm border border-border px-3 text-sm font-semibold text-primary" href={`https://maps.apple.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noreferrer">Directions</a>
         {job.draft?.submittedAt && <p className="text-sm text-primary">Submitted for review</p>}
         {job.draft && !draft ? <p role="alert">This draft could not be read. Ask your admin to review it.</p> :
           <VisitEditor key={job.id} visit={job} nextVisit={undefined} plan={null} requests={[]}
@@ -107,5 +110,6 @@ function TechnicianDashboard() {
       </section>}
       <Link to="/" className="text-sm underline">HomeSake home</Link>
     </main>
+    </div>
   );
 }

@@ -18,3 +18,10 @@ export function sidebarItem(active: boolean) {
       : "border border-transparent text-muted-foreground hover:border-border/60 hover:bg-foreground/[0.04] hover:text-foreground",
   ].join(" ");
 }
+
+export const mobilePortalNav =
+  "portal-mobile-nav fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-border bg-surface px-2 shadow-lg lg:hidden";
+
+export function mobilePortalTab(active: boolean) {
+  return `flex min-h-12 flex-1 items-center justify-center rounded-sm px-2 py-2 text-center text-xs font-semibold ${active ? "bg-primary text-primary-foreground" : "text-foreground"}`;
+}

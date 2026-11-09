@@ -34,7 +34,7 @@ import {
   getBillingDetails,
   reactivateMembership,
 } from "@/lib/membership.functions";
-import { sidebarHeading, sidebarItem, sidebarShell } from "@/lib/portal-ui";
+import { mobilePortalNav, mobilePortalTab, sidebarHeading, sidebarItem, sidebarShell } from "@/lib/portal-ui";
 import {
   appendHomeNote,
   parseHomeNotes,
@@ -553,6 +553,8 @@ function DashboardPage() {
   const attentionInvoices = (invoices.data ?? []).filter((invoice) =>
     invoice.status === "Due" && (!invoice.property_id || invoice.property_id === property?.id));
   const attentionIssues = (openItems.data ?? []).filter((issue) => !issue.resolved);
+  const latestTaskCount = readVisitReport(latestReport?.published_report)?.checks.filter((task) => task.status === "Completed").length;
+  const urgentIssues = attentionIssues.filter((issue) => issue.priority === "High");
   const latestSummary = latestReport ? readVisitReport(latestReport.published_report)?.summary || latestReport.visit_report : null;
 
   const state = profile.data ? membershipState(profile.data) : "active";
@@ -612,15 +614,16 @@ function DashboardPage() {
 
   return (
 
-    <div className="min-h-screen bg-background lg:flex">
+    <div className="portal-redesign min-h-screen pb-20 lg:flex lg:pb-0">
       <aside className={sidebarShell}>
-        <div className="flex h-20 items-center border-b border-border/50 px-6">
-          <Link to="/" aria-label="Home Harmony Hub — home">
-            <img src={logoUrl} alt="Home Harmony Hub logo" className="h-9 w-auto" />
+        <div className="portal-brand flex h-16 items-center justify-between px-4 lg:h-20 lg:px-6">
+          <Link to="/" aria-label="HomeSake home">
+            <img src={logoUrl} alt="HomeSake" className="h-9 w-auto" />
           </Link>
+          <button type="button" className="min-h-11 text-sm underline lg:hidden" onClick={signOut}>Sign out</button>
         </div>
-        <p className={sidebarHeading}>Portal</p>
-        <nav className="flex gap-2 overflow-x-auto px-3 pb-4 lg:flex-col lg:overflow-visible">
+        <p className={`${sidebarHeading} hidden lg:block`}>Portal</p>
+        <nav aria-label="Client portal" className="hidden gap-2 px-3 pb-4 lg:flex lg:flex-col">
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -642,7 +645,14 @@ function DashboardPage() {
         </nav>
       </aside>
 
-      <div className="flex-1">
+      <nav className={mobilePortalNav} aria-label="Client portal">
+        {tabs.map(({ id }, index) => <button key={id} type="button" className={mobilePortalTab(tab === id)}
+          aria-current={tab === id ? "page" : undefined} onClick={() => { setTab(id); window.scrollTo(0, 0); }}>
+          {["Home", "Visits", "Records", "Billing"][index]}
+        </button>)}
+      </nav>
+
+      <div className="min-w-0 flex-1">
         <header className="grid gap-4 border-b border-border px-4 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center lg:px-10">
           <div className="min-w-0">
             <p className="eyebrow">Active property</p>
@@ -711,8 +721,9 @@ function DashboardPage() {
                   {appointments.isError ? <p className="mt-3 text-sm" role="alert">Could not load task counts.</p>
                     : appointments.isPending ? <p className="mt-3 text-sm" role="status">Loading task counts…</p>
                     : <>
-                      <dl className="mt-4 flex flex-wrap gap-6">
+                      <dl className="mt-4 grid grid-cols-3 gap-3">
                         <div><dt className="text-sm">Today</dt><dd className="text-3xl font-semibold text-primary">{todayChecklistTasks}</dd></div>
+                        <div><dt className="text-sm">Last visit</dt><dd className="text-3xl font-semibold text-primary">{latestTaskCount ?? "—"}</dd></div>
                         <div><dt className="text-sm">All time</dt><dd className="text-3xl font-semibold text-primary">{totalChecklistTasks}</dd></div>
                       </dl>
                       <p className="mt-2 text-xs text-muted-foreground">Published reports by visit date · Central time</p>
@@ -725,6 +736,25 @@ function DashboardPage() {
                     </>}
                 </div>
               </div>
+              {(urgentHealth.length > 0 || urgentIssues.length > 0) && (
+                <section className="rounded-lg border border-destructive bg-destructive/5 p-4" aria-labelledby="urgent-client-heading">
+                  <h2 id="urgent-client-heading" className="text-lg font-semibold text-destructive">Needs immediate attention</h2>
+                  {urgentHealth.map(({ label: title, result }) => result && (
+                    <div key={title} className="mt-3 text-sm">
+                      <p className="font-semibold">{title}</p>
+                      {result.note && <p className="whitespace-pre-wrap break-words">{result.note}</p>}
+                      <Link to="/dashboard" search={{ visit: result.visit.id }} className="inline-flex min-h-11 items-center underline">View urgent finding</Link>
+                    </div>
+                  ))}
+                  {urgentIssues.map((issue) => (
+                    <div key={issue.id} className="mt-3 text-sm">
+                      <p className="font-semibold">{issue.title}</p>
+                      {issue.recommended_action && <p className="whitespace-pre-wrap break-words">{issue.recommended_action}</p>}
+                      <Link to="/dashboard" search={{ issue: issue.id }} className="inline-flex min-h-11 items-center underline">Review issue</Link>
+                    </div>
+                  ))}
+                </section>
+              )}
               <section id="client-home" tabIndex={-1} className="panel rounded-sm p-6" aria-labelledby="next-visit-heading">
                 <p className={label}>Your home, taken care of</p>
                 <h2 id="next-visit-heading" className="font-display mt-3 text-2xl">Your next visit</h2>
@@ -743,6 +773,65 @@ function DashboardPage() {
                 </div>
               </section>
 
+                <section className="panel rounded-sm p-6" aria-labelledby="home-health">
+                  <h2 id="home-health" className={label}><Gauge className="size-3.5 text-primary" /> Home Health Score</h2>
+                  {appointments.isError ? <p className="mt-3 text-sm" role="alert">Could not load the score.</p>
+                    : appointments.isPending ? <p className="mt-3 text-sm" role="status">Loading score…</p>
+                    : <>
+                      {health.score === null ? <p className="mt-3 text-sm">The score appears after the first condition check is published.</p>
+                        : <div className="mt-3 flex flex-wrap items-center gap-4">
+                          <ScoreRing score={health.score} />
+                          <div className="text-sm">
+                            {health.coverage < health.applicable && <p className="font-semibold">Preliminary</p>}
+                            <p>{health.coverage} of {health.applicable} applicable checks rated</p>
+                            {health.previous !== null && health.previous !== health.score &&
+                              <p>{health.score > health.previous ? "Up" : "Down"} {Math.abs(health.score - health.previous)} points at the last change</p>}
+                          </div>
+                        </div>}
+                      {health.changed.length > 0 && <div className="mt-3 text-sm">
+                        <p className="font-semibold">What changed</p>
+                        <ul className="mt-1 space-y-1">{health.changed.map((change) => <li key={change}>{change}</li>)}</ul>
+                      </div>}
+                      <details className="mt-3 text-sm">
+                        <summary className="cursor-pointer text-primary">See condition checks</summary>
+                        <ul className="mt-2 space-y-2">{health.results.map(({ label: title, weight, result, missedVisit }) => (
+                          <li key={title}>
+                            <strong>{title}</strong> · {weight} points · {result?.condition ?? "Not yet checked"}
+                            {result && <p>{formatDateTime(result.visit.scheduled_at)}</p>}
+                            {missedVisit && <p>Couldn’t check on {formatDateTime(missedVisit.scheduled_at)}</p>}
+                          </li>
+                        ))}</ul>
+                      </details>
+                    </>}
+                </section>
+
+              <section className="panel rounded-sm p-6" aria-labelledby="latest-report-heading">
+                <h2 id="latest-report-heading" className="font-display text-xl">Latest visit report</h2>
+                {latestReport ? (
+                  <>
+                    <p className="mt-2 text-sm text-muted-foreground">{latestReport.service} · {formatDateTime(latestReport.scheduled_at)}</p>
+                    {latestSummary && <p className="mt-3 whitespace-pre-wrap break-words text-sm">{latestSummary}</p>}
+                    <PublishedVisitReport visit={latestReport} expanded={false} />
+                    <button type="button" className="mt-3 mr-4 text-sm text-primary underline"
+                      onClick={() => setTab("maintenance")}>View maintenance record</button>
+                    <Link to="/dashboard" onClick={() => setTab("appointments")} search={{ visit: latestReport.id }} className="mt-3 inline-block text-sm text-primary underline">Open full visit</Link>
+                  </>
+                ) : appointments.isPending ? <p role="status" className="mt-3 text-sm">Loading your latest report…</p>
+                  : appointments.isError ? <p role="alert" className="mt-3 text-sm">Could not load your latest report.</p>
+                  : <p className="mt-3 text-sm text-muted-foreground">Your published report will appear here after a visit.</p>}
+              </section>
+                <div className={card}>
+                  <div>
+                    <p className={label}>
+                      <BadgeDollarSign className="size-3.5 text-primary" />
+                      Credits balance
+                    </p>
+                    <p className="font-display mt-4 text-2xl">
+                      {formatMoney(property.credits_cents)}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">Available credit</p>
+                  </div>
+                </div>
               <section className="panel rounded-sm p-6" aria-labelledby="client-attention">
                 <h2 id="client-attention" className="font-display text-xl">Needs your attention</h2>
                 {(extras.isPending || invoices.isPending || openItems.isPending) &&
@@ -777,81 +866,6 @@ function DashboardPage() {
                   <p className="mt-3 text-sm text-muted-foreground">You’re up to date. There are no pending quotes, invoices, or open issues for this home.</p>}
               </section>
 
-              <section className="panel rounded-sm p-6" aria-labelledby="latest-report-heading">
-                <h2 id="latest-report-heading" className="font-display text-xl">Latest visit report</h2>
-                {latestReport ? (
-                  <>
-                    <p className="mt-2 text-sm text-muted-foreground">{latestReport.service} · {formatDateTime(latestReport.scheduled_at)}</p>
-                    {latestSummary && <p className="mt-3 whitespace-pre-wrap break-words text-sm">{latestSummary}</p>}
-                    <PublishedVisitReport visit={latestReport} expanded={false} />
-                    <button type="button" className="mt-3 mr-4 text-sm text-primary underline"
-                      onClick={() => setTab("maintenance")}>View maintenance record</button>
-                    <Link to="/dashboard" onClick={() => setTab("appointments")} search={{ visit: latestReport.id }} className="mt-3 inline-block text-sm text-primary underline">Open full visit</Link>
-                  </>
-                ) : appointments.isPending ? <p role="status" className="mt-3 text-sm">Loading your latest report…</p>
-                  : appointments.isError ? <p role="alert" className="mt-3 text-sm">Could not load your latest report.</p>
-                  : <p className="mt-3 text-sm text-muted-foreground">Your published report will appear here after a visit.</p>}
-              </section>
-              <div className="grid gap-6 md:grid-cols-2">
-                <section className="panel rounded-sm p-6" aria-labelledby="home-health">
-                  {urgentHealth.length > 0 && <div className="mb-4 rounded-sm border border-destructive p-3 text-sm">
-                    <p className="font-semibold text-destructive">Urgent action needed</p>
-                    {urgentHealth.map(({ label: title, result }) => result && (
-                      <div key={title} className="mt-2">
-                        <p className="font-semibold">{title}</p>
-                        {result.note && <p className="whitespace-pre-wrap break-words">{result.note}</p>}
-                        <Link to="/dashboard" search={{ visit: result.visit.id }} className="underline">View report</Link>
-                      </div>
-                    ))}
-                  </div>}
-                  <h2 id="home-health" className={label}><Gauge className="size-3.5 text-primary" /> Home Health Score</h2>
-                  {appointments.isError ? <p className="mt-3 text-sm" role="alert">Could not load the score.</p>
-                    : appointments.isPending ? <p className="mt-3 text-sm" role="status">Loading score…</p>
-                    : <>
-                      {health.score === null ? <p className="mt-3 text-sm">The score appears after the first condition check is published.</p>
-                        : <div className="mt-3 flex flex-wrap items-center gap-4">
-                          <ScoreRing score={health.score} />
-                          <div className="text-sm">
-                            {health.coverage < health.applicable && <p className="font-semibold">Preliminary</p>}
-                            <p>{health.coverage} of {health.applicable} applicable checks rated</p>
-                            {health.previous !== null && health.previous !== health.score &&
-                              <p>{health.score > health.previous ? "Up" : "Down"} {Math.abs(health.score - health.previous)} points at the last change</p>}
-                          </div>
-                        </div>}
-                      {health.changed.length > 0 && <div className="mt-3 text-sm">
-                        <p className="font-semibold">What changed</p>
-                        <ul className="mt-1 space-y-1">{health.changed.map((change) => <li key={change}>{change}</li>)}</ul>
-                      </div>}
-                      <details className="mt-3 text-sm">
-                        <summary className="cursor-pointer text-primary">See condition checks</summary>
-                        <ul className="mt-2 space-y-2">{health.results.map(({ label: title, weight, result, missedVisit }) => (
-                          <li key={title}>
-                            <strong>{title}</strong> · {weight} points · {result?.condition ?? "Not yet checked"}
-                            {result && <p>{formatDateTime(result.visit.scheduled_at)}</p>}
-                            {missedVisit && <p>Couldn’t check on {formatDateTime(missedVisit.scheduled_at)}</p>}
-                          </li>
-                        ))}</ul>
-                      </details>
-                    </>}
-                </section>
-
-                <div className={card}>
-                  <div>
-                    <p className={label}>
-                      <BadgeDollarSign className="size-3.5 text-primary" />
-                      Credits balance
-                    </p>
-                    <p className="font-display mt-4 text-2xl">
-                      {formatMoney(property.credits_cents)}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">Available credit</p>
-                  </div>
-                </div>
-
-
-              </div>
-
-
               <div className="grid gap-6 lg:grid-cols-2">
                 <section className="panel rounded-sm p-6" aria-labelledby="recent-activity">
                   <h2 id="recent-activity" className={label}>
@@ -860,7 +874,7 @@ function DashboardPage() {
                   <ul className="mt-5 space-y-4">
                     {(activity.data ?? []).map((a) => (
                       <li key={a.id} className="flex gap-3">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" />
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700" />
                         <div>
                           <p className="text-sm">{a.title}</p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -940,7 +954,7 @@ function DashboardPage() {
                   <ul className="mt-5 space-y-2">
                     {taskLog.map((t) => (
                       <li key={t.id} className="flex items-start gap-3 text-sm">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" />
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700" />
                         <span className="min-w-0 break-words text-muted-foreground">
                           {t.title}
                           {t.at && <span className="block text-xs">{formatDateTime(t.at)}</span>}
@@ -1020,7 +1034,7 @@ function DashboardPage() {
                         tabIndex={-1}
                         className="rounded-sm border border-border p-3 text-sm text-muted-foreground"
                       >
-                        <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
+                        <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
                         <span className="font-semibold">{o.title} · Resolved</span>
                         <IssueHistory issue={o} />
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -1082,7 +1096,7 @@ function DashboardPage() {
                 <ul className="mt-5 space-y-3">
                   {past.map((a) => (
                     <li key={a.id} id={`visit-${a.id}`} tabIndex={-1} className="flex gap-3">
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" />
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700" />
                       <div>
                         <p className="text-xs text-muted-foreground">
                           {formatDateTime(a.scheduled_at)} · {a.status}
@@ -1122,7 +1136,7 @@ function DashboardPage() {
                   Payment status:{" "}
                   <span
                     className={
-                      profile.data?.payment_status === "Paid" ? "text-emerald-400" : "text-destructive"
+                      profile.data?.payment_status === "Paid" ? "text-emerald-700" : "text-destructive"
                     }
                   >
                     {profile.data?.payment_status ?? "—"}
@@ -1281,7 +1295,7 @@ function DashboardPage() {
                             <p className="text-sm font-semibold">{formatMoney(inv.amount_cents)}</p>
                             <p
                               className={`text-[11px] uppercase ${
-                                inv.status === "Paid" ? "text-emerald-400" : "text-destructive"
+                                inv.status === "Paid" ? "text-emerald-700" : "text-destructive"
                               }`}
                             >
                               {inv.status}
