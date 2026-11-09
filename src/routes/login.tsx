@@ -34,6 +34,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
+  const [staffSession, setStaffSession] = useState(false);
   const [email, setEmail] = useState("");
   const [resetEmail, setResetEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +55,7 @@ function LoginPage() {
     else setResetNotice(`Reset link sent to ${resetEmail.trim()} — check your inbox.`);
   };
 
-  // Already signed in? Send them straight to the portal that matches their role.
+  // Only a client session can skip client sign-in.
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(async ({ data }) => {
@@ -62,7 +63,7 @@ function LoginPage() {
       if (!userId || !active) return;
       const role = await resolveRole(userId);
       if (!active) return;
-      if (role === "admin") navigate({ to: "/admin", replace: true });
+      if (role === "admin") setStaffSession(true);
       else navigate({ to: "/dashboard", search, replace: true });
     });
     return () => {
@@ -84,8 +85,8 @@ function LoginPage() {
       if (!data.user) throw new Error("Sign-in failed.");
       const role = await resolveRole(data.user.id);
       if (role === "admin") {
-        await supabase.auth.signOut();
-        throw new Error("Admin accounts sign in at /admin/login.");
+        setStaffSession(true);
+        throw new Error("Enter a client account to open the client portal.");
       }
       navigate({ to: "/dashboard", search, replace: true });
     } catch (err) {
@@ -159,6 +160,13 @@ function LoginPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Access reports, inspection photos, appointments, and invoices.
               </p>
+
+              {staffSession && (
+                <div className="mt-4 rounded-sm border border-border p-3 text-sm">
+                  <p>You’re signed in as staff. Use a client account below to switch to the client portal.</p>
+                  <Link to="/admin" className="mt-2 inline-block text-primary underline">Open staff dashboard</Link>
+                </div>
+              )}
 
               <form className="mt-7 space-y-3" onSubmit={submit}>
                 <div className="relative">
