@@ -15,6 +15,7 @@ import {
   ImagePlus,
   Loader2,
   Mail,
+  MessageSquare,
   LogOut,
   Plus,
   Receipt,
@@ -26,6 +27,8 @@ import type { LucideIcon } from "lucide-react";
 
 import logoUrl from "@/assets/homesake-logo.png";
 import { SiteEditor } from "@/components/admin/site-editor";
+import { WebsiteInbox } from "@/components/admin/website-inbox";
+import { parseWebsiteInboxSearch } from "@/lib/website-chat";
 import { VisitWorkspace } from "@/components/portal/visit-workspace";
 import { PhotoLightbox } from "@/components/portal/photo-lightbox";
 import {
@@ -76,6 +79,7 @@ import {
 } from "@/lib/portal";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  validateSearch: parseWebsiteInboxSearch,
   head: () => ({
     meta: [
       { title: "Admin & Contractor Portal — Home Harmony Hub" },
@@ -106,13 +110,14 @@ const ghostBtn =
 
 const TIERS = ["Essential", "Signature", "Estate"];
 
-type Tab = "today" | "clients" | "appointments" | "invoices" | "site";
+type Tab = "today" | "clients" | "appointments" | "invoices" | "inbox" | "site";
 
 const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: "today", label: "Today", icon: Sun },
   { id: "clients", label: "Clients & properties", icon: Users },
   { id: "appointments", label: "Appointments", icon: CalendarDays },
   { id: "invoices", label: "Invoicing", icon: Receipt },
+  { id: "inbox", label: "Inbox", icon: MessageSquare },
   { id: "site", label: "Website editor", icon: Globe },
 ];
 
@@ -421,7 +426,8 @@ function AdminPage() {
   const [reviewId, setReviewId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [scheduleShortcut, setScheduleShortcut] = useState(false);
-  const [tab, setTab] = useState<Tab>("today");
+  const { inbox } = Route.useSearch();
+  const [tab, setTab] = useState<Tab>(inbox ? "inbox" : "today");
   const [today, setToday] = useState(() => new Date());
   const [clientSearch, setClientSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -844,10 +850,10 @@ function AdminPage() {
             {["Today", "Clients", "Schedule"][index]}
           </button>
         ))}
-        <button type="button" className={mobilePortalTab(moreOpen || tab === "invoices" || tab === "site")}
+        <button type="button" className={mobilePortalTab(moreOpen || tab === "invoices" || tab === "inbox" || tab === "site")}
           aria-expanded={moreOpen} onClick={() => setMoreOpen(!moreOpen)}>More</button>
         {moreOpen && <div className="panel absolute right-2 bottom-full grid min-w-44 p-2">
-          {(["invoices", "site"] as const).map((id) => (
+          {(["inbox", "invoices", "site"] as const).map((id) => (
             <button key={id} type="button" className="min-h-11 px-3 text-left text-sm"
               onClick={() => { setReviewId(null); setTab(id); setActiveId(null); setMoreOpen(false); window.scrollTo(0, 0); }}>
               {tabs.find((item) => item.id === id)?.label}
@@ -2030,6 +2036,7 @@ function AdminPage() {
             </>
           )}
 
+          {!property && tab === "inbox" && <WebsiteInbox />}
           {!property && tab === "site" && <SiteEditor />}
           </>}
         </main>

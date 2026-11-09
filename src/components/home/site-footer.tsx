@@ -1,6 +1,7 @@
 import { useSiteContent } from "@/hooks/use-site-content";
 import { useRouterState } from "@tanstack/react-router";
 import { resolveSiteHref } from "@/lib/site-links";
+import { WebsiteChat } from "@/components/home/website-chat";
 
 export function SiteFooter() {
   const { footer } = useSiteContent();
@@ -54,8 +55,8 @@ export function SiteFooter() {
           </p>
           <p className="sm:text-right">{footer.legalRight}</p>
         </div>
-
       </div>
+      <WebsiteChat />
     </footer>
   );
 }

@@ -4,9 +4,11 @@ import { Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 
 import logoUrl from "@/assets/homesake-logo.png";
 import { supabase } from "@/integrations/supabase/client";
+import { parseWebsiteInboxSearch } from "@/lib/website-chat";
 import { resolveRole } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/admin/login")({
+  validateSearch: parseWebsiteInboxSearch,
   head: () => ({
     meta: [
       { name: "robots", content: "noindex" },
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/admin/login")({
 
 function AdminLoginPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [resetEmail, setResetEmail] = useState("");
@@ -59,7 +62,8 @@ function AdminLoginPage() {
       if (!userId || !active) return;
       const role = await resolveRole(userId);
       if (!active) return;
-      navigate({ to: role === "admin" ? "/admin" : role === "technician" ? "/tech" : "/dashboard", replace: true });
+      if (role === "admin") navigate({ to: "/admin", search, replace: true });
+      else navigate({ to: role === "technician" ? "/tech" : "/dashboard", replace: true });
     });
     return () => {
       active = false;
@@ -83,7 +87,7 @@ function AdminLoginPage() {
         await supabase.auth.signOut();
         throw new Error("This login is for admins only. Please use the client portal login.");
       }
-      navigate({ to: "/admin", replace: true });
+      navigate({ to: "/admin", search, replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
