@@ -38,7 +38,7 @@ export function VisitReportContent({ report, reviewing = false }: { report: Visi
             <summary className="cursor-pointer font-semibold">{label} ({checks.length})</summary>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
               {checks.map((check, i) => <li key={i} className="mb-2">
-                <p>{check.title}</p>
+                <p>{check.title}{check.condition ? ` · ${check.condition}` : ""}</p>
                 {check.note?.trim() && <p className="whitespace-pre-wrap break-words text-muted-foreground">{check.note}</p>}
                 {check.photos?.length ? gallery(check.photos, check.title) : null}
               </li>)}

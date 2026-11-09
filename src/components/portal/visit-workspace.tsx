@@ -1,3 +1,4 @@
+import { healthCheck } from "@/lib/home-health";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
@@ -8,7 +9,7 @@ import { defaultBenefitModules } from "@/lib/membership-benefits-content";
 import { sendPublishedVisitReportEmail } from "@/lib/notifications.functions";
 import { formatDateTime, type Appointment } from "@/lib/portal";
 import {
-  checkStates, emptyVisitReport, loadVisitDraft, readVisitReport, saveVisitDraft, uploadVisitReportPhoto,
+  checkStates, conditions, emptyVisitReport, loadVisitDraft, readVisitReport, saveVisitDraft, uploadVisitReportPhoto,
   type VisitReport,
 } from "@/lib/visit-workspace";
 
@@ -102,6 +103,7 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
     setReport((current) => ({ ...current, checks: current.checks.map((check, i) =>
       i === index ? { ...check, ...changes,
         ...(changes.status !== undefined && changes.status !== "Needs attention" ? { urgent: false } : {}),
+        ...(!("condition" in changes) && "status" in changes ? { condition: undefined } : {}),
       } : check) }));
 
   const preview = {
@@ -110,7 +112,7 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
       check.status ? [check] : check.note?.trim() || check.photos?.length
         ? [{ ...check, status: "Needs attention" as const }] : []),
   };
-  const checkableTasks = report.checks.filter((task) => task.status === null || task.status === "Completed");
+  const checkableTasks = report.checks.filter((task) => !task.condition && (task.status === null || task.status === "Completed"));
   const allChecked = checkableTasks.length > 0 && checkableTasks.every((task) => task.status === "Completed");
   const followUpCount = report.checks.filter((task) => task.status === "Needs attention").length;
   const photoCount = report.photos.length + report.checks.reduce((count, check) => count + (check.photos?.length ?? 0), 0);
@@ -127,7 +129,7 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
       { ...emptyVisitReport, summary: nextVisit.visit_report ?? "" };
     const existing = target.checks.find((check) => check.title === task.title);
     const note = task.note?.trim();
-    if (existing && (existing.status === "Completed" || existing.status === "Not applicable" || existing.note?.trim() || (existing.status === "Needs attention" && !note))) {
+    if (existing && (existing.condition || existing.status === "Completed" || existing.status === "Not applicable" || existing.note?.trim() || (existing.status === "Needs attention" && !note))) {
       setNotice("This task already has an outcome or note on the next visit. Open that visit to review it.");
       return;
     }
@@ -231,14 +233,14 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
                     const checked = event.target.checked;
                     setReport((current) => ({
                       ...current,
-                      checks: current.checks.map((task) => checked && task.status === null
+                      checks: current.checks.map((task) => checked && !task.condition && task.status === null
                         ? { ...task, status: "Completed" }
-                        : !checked && task.status === "Completed" ? { ...task, status: null } : task),
+                        : !checked && !task.condition && task.status === "Completed" ? { ...task, status: null } : task),
                     }));
                   }} />
                 Check all
               </label>
-              <p className="mt-1 text-xs text-muted-foreground">Tasks marked Needs attention or Not applicable keep their outcome.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Rated tasks and tasks marked Needs attention or Not applicable keep their outcome.</p>
               <p className="mt-1 text-xs text-muted-foreground">{nextVisit
                 ? `Follow-ups go to the draft for ${formatDateTime(nextVisit.scheduled_at)}.`
                 : "Schedule a later visit to carry tasks forward."}</p>
@@ -263,8 +265,25 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
                       <option>Needs attention</option>
                       <option>Not applicable</option>
                     </select>}
+                    {healthCheck(item.title) && <label className="flex flex-wrap items-center gap-2">
+                      Condition · {healthCheck(item.title)?.weight} points
+                      <select className="min-h-10 rounded-sm border border-border bg-background px-2"
+                        value={item.condition ?? ""} onChange={(event) => {
+                          const condition = conditions.find((value) => value === event.target.value);
+                          if (!condition) {
+                            updateCheck(i, { condition: undefined });
+                            return;
+                          }
+                          const status = condition === "Good" ? "Completed"
+                            : condition === "Not applicable" ? "Not applicable" : "Needs attention";
+                          updateCheck(i, { condition, status, urgent: condition === "Urgent issue" });
+                        }}>
+                        <option value="">Not rated</option>
+                        {conditions.map((condition) => <option key={condition}>{condition}</option>)}
+                      </select>
+                    </label>}
                     {item.status === "Needs attention" && <label className="flex items-center gap-2 text-destructive">
-                      <input type="checkbox" checked={Boolean(item.urgent)}
+                      <input type="checkbox" checked={Boolean(item.urgent)} disabled={Boolean(item.condition)}
                         onChange={(event) => updateCheck(i, { urgent: event.target.checked })} />
                       Needs immediate attention
                     </label>}

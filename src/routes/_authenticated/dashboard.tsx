@@ -1,3 +1,4 @@
+import { homeHealth } from "@/lib/home-health";
 import { MaintenanceRecord } from "@/components/portal/maintenance-record";
 import { resolvePortalTarget } from "@/lib/portal-target";
 import { IssueHistory } from "@/components/portal/issue-progress";
@@ -51,7 +52,6 @@ import {
   type PhotoWithUrl,
   membershipState,
   saveHomeNotes,
-  scoreLabel,
 } from "@/lib/portal";
 import { PhotoLightbox } from "@/components/portal/photo-lightbox";
 import { VisitReportContent } from "@/components/portal/visit-report";
@@ -120,7 +120,7 @@ function ScoreRing({ score }: { score: number }) {
       <div className="absolute text-center">
         <p className="font-display text-3xl leading-none">{score}</p>
         <p className="mt-1 text-[10px] tracking-[0.18em] text-primary uppercase">
-          {scoreLabel(score)}
+          out of 100
         </p>
       </div>
     </div>
@@ -542,6 +542,9 @@ function DashboardPage() {
   const totalChecklistTasks = Array.from(dayCounts.values()).reduce((total, count) => total + count, 0);
   const todayChecklistTasks = dayCounts.get(visitDay.format(new Date())) ?? 0;
 
+  const health = homeHealth(appointments.data ?? []);
+  const urgentHealth = health.results.filter(({ result }) => result?.condition === "Urgent issue");
+
   const pendingExtras = extras.data?.filter((quote) => quote.status === "Pending" &&
     (appointments.data ?? []).some((visit) => visit.id === quote.appointment_id && canQuoteVisit(visit))) ?? [];
   const latestReport = (appointments.data ?? []).find((visit) => Boolean(visit.published_report || visit.visit_report));
@@ -789,25 +792,47 @@ function DashboardPage() {
                   : <p className="mt-3 text-sm text-muted-foreground">Your published report will appear here after a visit.</p>}
               </section>
               <div className="grid gap-6 md:grid-cols-2">
-                <div className="panel flex flex-col items-start gap-4 rounded-sm p-6 sm:flex-row sm:items-center sm:gap-6">
-                  <ScoreRing score={property.health_score} />
-                  <div className="min-w-0">
-
-                    <p className={label}>
-                      <Gauge className="size-3.5 text-primary" />
-                      Home health score
-                    </p>
-                    <p className="mt-3 text-sm">Overall score</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Calculated{" "}
-                      {new Date(property.score_calculated_at).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </div>
-                </div>
+                <section className="panel rounded-sm p-6" aria-labelledby="home-health">
+                  {urgentHealth.length > 0 && <div className="mb-4 rounded-sm border border-destructive p-3 text-sm">
+                    <p className="font-semibold text-destructive">Urgent action needed</p>
+                    {urgentHealth.map(({ label: title, result }) => result && (
+                      <div key={title} className="mt-2">
+                        <p className="font-semibold">{title}</p>
+                        {result.note && <p className="whitespace-pre-wrap break-words">{result.note}</p>}
+                        <Link to="/dashboard" search={{ visit: result.visit.id }} className="underline">View report</Link>
+                      </div>
+                    ))}
+                  </div>}
+                  <h2 id="home-health" className={label}><Gauge className="size-3.5 text-primary" /> Home Health Score</h2>
+                  {appointments.isError ? <p className="mt-3 text-sm" role="alert">Could not load the score.</p>
+                    : appointments.isPending ? <p className="mt-3 text-sm" role="status">Loading score…</p>
+                    : <>
+                      {health.score === null ? <p className="mt-3 text-sm">The score appears after the first condition check is published.</p>
+                        : <div className="mt-3 flex flex-wrap items-center gap-4">
+                          <ScoreRing score={health.score} />
+                          <div className="text-sm">
+                            {health.coverage < health.applicable && <p className="font-semibold">Preliminary</p>}
+                            <p>{health.coverage} of {health.applicable} applicable checks rated</p>
+                            {health.previous !== null && health.previous !== health.score &&
+                              <p>{health.score > health.previous ? "Up" : "Down"} {Math.abs(health.score - health.previous)} points at the last change</p>}
+                          </div>
+                        </div>}
+                      {health.changed.length > 0 && <div className="mt-3 text-sm">
+                        <p className="font-semibold">What changed</p>
+                        <ul className="mt-1 space-y-1">{health.changed.map((change) => <li key={change}>{change}</li>)}</ul>
+                      </div>}
+                      <details className="mt-3 text-sm">
+                        <summary className="cursor-pointer text-primary">See condition checks</summary>
+                        <ul className="mt-2 space-y-2">{health.results.map(({ label: title, weight, result, missedVisit }) => (
+                          <li key={title}>
+                            <strong>{title}</strong> · {weight} points · {result?.condition ?? "Not yet checked"}
+                            {result && <p>{formatDateTime(result.visit.scheduled_at)}</p>}
+                            {missedVisit && <p>Couldn’t check on {formatDateTime(missedVisit.scheduled_at)}</p>}
+                          </li>
+                        ))}</ul>
+                      </details>
+                    </>}
+                </section>
 
                 <div className={card}>
                   <div>
