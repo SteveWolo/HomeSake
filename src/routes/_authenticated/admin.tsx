@@ -418,6 +418,7 @@ function AdminPage() {
   const createClientFn = useServerFn(adminCreateClient);
   const deleteClientFn = useServerFn(adminDeleteClient);
 
+  const [reviewId, setReviewId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [scheduleShortcut, setScheduleShortcut] = useState(false);
   const [tab, setTab] = useState<Tab>("today");
@@ -721,6 +722,12 @@ function AdminPage() {
     ? upcomingAll.filter((a) => a.property_id === property.id)
     : [];
 
+  const reviewVisit = !property && tab === "today" ? allAppointments.data?.find((visit) => visit.id === reviewId) : undefined;
+  const openReview = (visit: Appointment) => {
+    setReviewId(visit.id);
+    window.scrollTo(0, 0);
+  };
+
   const todayKey = workdayKey.format(today);
   const todayVisits = (allAppointments.data ?? []).filter(
     (visit) => visit.status !== "Cancelled" && workdayKey.format(new Date(visit.scheduled_at)) === todayKey,
@@ -765,6 +772,7 @@ function AdminPage() {
                   key={t.id}
                   type="button"
                   onClick={() => {
+                    setReviewId(null);
                     setTab(t.id);
                     setActiveId(null);
                   }}
@@ -832,7 +840,7 @@ function AdminPage() {
         {(["today", "clients", "appointments"] as const).map((id, index) => (
           <button key={id} type="button" className={mobilePortalTab(tab === id && !moreOpen)}
             aria-current={tab === id && !moreOpen ? "page" : undefined}
-            onClick={() => { setTab(id); setActiveId(null); setMoreOpen(false); window.scrollTo(0, 0); }}>
+            onClick={() => { setReviewId(null); setTab(id); setActiveId(null); setMoreOpen(false); window.scrollTo(0, 0); }}>
             {["Today", "Clients", "Schedule"][index]}
           </button>
         ))}
@@ -841,7 +849,7 @@ function AdminPage() {
         {moreOpen && <div className="panel absolute right-2 bottom-full grid min-w-44 p-2">
           {(["invoices", "site"] as const).map((id) => (
             <button key={id} type="button" className="min-h-11 px-3 text-left text-sm"
-              onClick={() => { setTab(id); setActiveId(null); setMoreOpen(false); window.scrollTo(0, 0); }}>
+              onClick={() => { setReviewId(null); setTab(id); setActiveId(null); setMoreOpen(false); window.scrollTo(0, 0); }}>
               {tabs.find((item) => item.id === id)?.label}
             </button>
           ))}
@@ -889,6 +897,19 @@ function AdminPage() {
             {property ? `${ownerLabel(property.owner_id)} — property overview` : tab === "today" ? "Operations" : tabs.find((t) => t.id === tab)?.label}
           </h1>
 
+          {reviewVisit ? (
+            <section className="panel p-4 sm:p-6">
+              <button type="button" className={ghostBtn} onClick={() => setReviewId(null)}>Back to reports to review</button>
+              <h2 className="mt-3 font-display text-xl">{propertyLabel(reviewVisit.property_id)}</h2>
+              <VisitWorkspace key={reviewVisit.id} visit={reviewVisit} nextVisit={undefined}
+                requests={(requests.data ?? []).filter((request) => request.appointment_id === reviewVisit.id)}
+                onPublished={async () => {
+                  await Promise.all([allAppointments.refetch(), reviewQueue.refetch()]);
+                  setSaved("Visit report published.");
+                  setReviewId(null);
+                }} />
+            </section>
+          ) : <>
           {saved && <p role="status" className="text-sm text-primary">{saved}</p>}
           {tab !== "site" && (
             <nav aria-label="Quick actions" className="flex flex-wrap gap-3">
@@ -953,7 +974,7 @@ function AdminPage() {
             <TodayVisits id="technician-reviews" title="Reports to review" visits={reviews.map(({ visit }) => visit)}
               loading={reviewQueue.isPending || allAppointments.isPending}
               failed={reviewQueue.isError || allAppointments.isError} empty="No technician reports waiting for review."
-              showDate propertyLabel={propertyLabel} onOpen={openPropertyVisit} />
+              showDate propertyLabel={propertyLabel} onOpen={openReview} />
             <section className="panel p-6" aria-labelledby="admin-urgent-findings">
               <h2 id="admin-urgent-findings" className="font-display text-xl text-destructive">Urgent findings</h2>
               {reviewQueue.isPending && <p role="status" className="mt-2 text-sm">Loading urgent findings…</p>}
@@ -962,7 +983,7 @@ function AdminPage() {
                 {reviews.flatMap(({ visit, urgent }) => urgent.map((task, index) => (
                   <li key={`${visit.id}-${index}`} className="flex flex-wrap items-center justify-between gap-3 text-sm">
                     <span>{task.title} · {propertyLabel(visit.property_id)}</span>
-                    <button type="button" className={ghostBtn} onClick={() => openPropertyVisit(visit)}>Review draft</button>
+                    <button type="button" className={ghostBtn} onClick={() => openReview(visit)}>Review draft</button>
                   </li>
                 )))}
                 {urgentIssues.map((issue) => (
@@ -2010,6 +2031,7 @@ function AdminPage() {
           )}
 
           {!property && tab === "site" && <SiteEditor />}
+          </>}
         </main>
       </div>
     </div>

@@ -11,6 +11,8 @@ const checkSchema = z.object({
   status: z.enum(checkStates).nullable(),
   note: z.string().max(1000).optional(),
   urgent: z.boolean().optional(),
+  completed: z.boolean().optional(),
+  fixed: z.boolean().optional(),
   condition: z.enum(conditions).optional(),
   photos: z.array(z.string().max(100)).max(12).optional(),
 });
@@ -21,6 +23,10 @@ const reportSchema = z.object({
   publishedAt: z.string().optional(),
 });
 export type VisitReport = z.infer<typeof reportSchema>;
+export function taskCompleted(task: VisitReport["checks"][number]) {
+  return task.completed ?? task.status === "Completed";
+}
+
 export const emptyVisitReport: VisitReport = { summary: "", checks: [], photos: [] };
 const bucket = "visit-report-photos";
 
