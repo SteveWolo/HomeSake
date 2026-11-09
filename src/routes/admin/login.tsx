@@ -59,7 +59,7 @@ function AdminLoginPage() {
       if (!userId || !active) return;
       const role = await resolveRole(userId);
       if (!active) return;
-      navigate({ to: role === "admin" ? "/admin" : "/dashboard", replace: true });
+      navigate({ to: role === "admin" ? "/admin" : role === "technician" ? "/tech" : "/dashboard", replace: true });
     });
     return () => {
       active = false;
@@ -209,7 +209,7 @@ function AdminLoginPage() {
 
               <p className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
                 <ShieldCheck className="size-3.5 text-primary" />
-                Restricted to estate managers and contractors.
+                Restricted to HomeSake administrators.
               </p>
             </>
           )}
@@ -219,6 +219,7 @@ function AdminLoginPage() {
           <Link to="/login" className="transition-colors hover:text-foreground">
             Client portal login →
           </Link>
+          <Link to="/tech-login" className="ml-4 transition-colors hover:text-foreground">Technician sign-in →</Link>
         </p>
       </div>
     </div>

@@ -19,9 +19,11 @@ import { Route as MembershipBenefitsRouteImport } from './routes/membership-bene
 import { Route as OurStandardsRouteImport } from './routes/our-standards'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ServiceAreasRouteImport } from './routes/service-areas'
+import { Route as TechLoginRouteImport } from './routes/tech-login'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedTechRouteImport } from './routes/_authenticated/tech'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
@@ -75,6 +77,11 @@ const ServiceAreasRoute = ServiceAreasRouteImport.update({
   path: '/service-areas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TechLoginRoute = TechLoginRouteImport.update({
+  id: '/tech-login',
+  path: '/tech-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -88,6 +95,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTechRoute = AuthenticatedTechRouteImport.update({
+  id: '/tech',
+  path: '/tech',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -116,9 +128,11 @@ export interface FileRoutesByFullPath {
   '/our-standards': typeof OurStandardsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/service-areas': typeof ServiceAreasRoute
+  '/tech-login': typeof TechLoginRoute
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/tech': typeof AuthenticatedTechRoute
   '/admin/login': typeof AdminLoginRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -133,9 +147,11 @@ export interface FileRoutesByTo {
   '/our-standards': typeof OurStandardsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/service-areas': typeof ServiceAreasRoute
+  '/tech-login': typeof TechLoginRoute
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/tech': typeof AuthenticatedTechRoute
   '/admin/login': typeof AdminLoginRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -152,9 +168,11 @@ export interface FileRoutesById {
   '/our-standards': typeof OurStandardsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/service-areas': typeof ServiceAreasRoute
+  '/tech-login': typeof TechLoginRoute
   '/terms': typeof TermsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/tech': typeof AuthenticatedTechRoute
   '/admin/login': typeof AdminLoginRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -171,9 +189,11 @@ export interface FileRouteTypes {
     | '/our-standards'
     | '/reset-password'
     | '/service-areas'
+    | '/tech-login'
     | '/terms'
     | '/admin'
     | '/dashboard'
+    | '/tech'
     | '/admin/login'
     | '/pay/$invoiceId'
     | '/api/public/stripe/webhook'
@@ -188,9 +208,11 @@ export interface FileRouteTypes {
     | '/our-standards'
     | '/reset-password'
     | '/service-areas'
+    | '/tech-login'
     | '/terms'
     | '/admin'
     | '/dashboard'
+    | '/tech'
     | '/admin/login'
     | '/pay/$invoiceId'
     | '/api/public/stripe/webhook'
@@ -206,9 +228,11 @@ export interface FileRouteTypes {
     | '/our-standards'
     | '/reset-password'
     | '/service-areas'
+    | '/tech-login'
     | '/terms'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/tech'
     | '/admin/login'
     | '/pay/$invoiceId'
     | '/api/public/stripe/webhook'
@@ -225,6 +249,7 @@ export interface RootRouteChildren {
   OurStandardsRoute: typeof OurStandardsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ServiceAreasRoute: typeof ServiceAreasRoute
+  TechLoginRoute: typeof TechLoginRoute
   TermsRoute: typeof TermsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
@@ -303,6 +328,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServiceAreasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tech-login': {
+      id: '/tech-login'
+      path: '/tech-login'
+      fullPath: '/tech-login'
+      preLoaderRoute: typeof TechLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -322,6 +354,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tech': {
+      id: '/_authenticated/tech'
+      path: '/tech'
+      fullPath: '/tech'
+      preLoaderRoute: typeof AuthenticatedTechRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/admin/login': {
@@ -351,11 +390,13 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedTechRoute: typeof AuthenticatedTechRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedTechRoute: AuthenticatedTechRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -372,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   OurStandardsRoute: OurStandardsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ServiceAreasRoute: ServiceAreasRoute,
+  TechLoginRoute: TechLoginRoute,
   TermsRoute: TermsRoute,
   AdminLoginRoute: AdminLoginRoute,
   PayInvoiceIdRoute: PayInvoiceIdRoute,

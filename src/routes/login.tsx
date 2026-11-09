@@ -63,7 +63,7 @@ function LoginPage() {
       if (!userId || !active) return;
       const role = await resolveRole(userId);
       if (!active) return;
-      if (role === "admin") setStaffSession(true);
+      if (role !== "client") setStaffSession(true);
       else navigate({ to: "/dashboard", search, replace: true });
     });
     return () => {
@@ -84,7 +84,7 @@ function LoginPage() {
       if (signInError) throw signInError;
       if (!data.user) throw new Error("Sign-in failed.");
       const role = await resolveRole(data.user.id);
-      if (role === "admin") {
+      if (role !== "client") {
         setStaffSession(true);
         throw new Error("Enter a client account to open the client portal.");
       }
@@ -164,7 +164,8 @@ function LoginPage() {
               {staffSession && (
                 <div className="mt-4 rounded-sm border border-border p-3 text-sm">
                   <p>You’re signed in as staff. Use a client account below to switch to the client portal.</p>
-                  <Link to="/admin" className="mt-2 inline-block text-primary underline">Open staff dashboard</Link>
+                  <Link to="/admin" className="mt-2 inline-block text-primary underline">Open admin dashboard</Link>
+                  <Link to="/tech-login" className="ml-3 text-primary underline">Technician sign-in</Link>
                 </div>
               )}
 

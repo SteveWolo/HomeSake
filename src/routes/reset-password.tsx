@@ -71,7 +71,7 @@ function ResetPasswordPage() {
       const userId = data.user?.id;
       const role = userId ? await resolveRole(userId) : "client";
       setTimeout(
-        () => navigate({ to: role === "admin" ? "/admin" : "/dashboard", replace: true }),
+        () => navigate({ to: role === "admin" ? "/admin" : role === "technician" ? "/tech" : "/dashboard", replace: true }),
         1200,
       );
     } catch (err) {

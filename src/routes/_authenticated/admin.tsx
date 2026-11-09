@@ -1,3 +1,4 @@
+import { AssignTechnician, TechnicianTeam } from "@/components/admin/technician-team";
 import { MaintenanceRecord } from "@/components/portal/maintenance-record";
 import { AdminIssueProgress, IssueHistory } from "@/components/portal/issue-progress";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -460,7 +461,7 @@ function AdminPage() {
 
   // Strict role routing: clients never see the admin portal.
   useEffect(() => {
-    if (!loading && role && role !== "admin") navigate({ to: "/dashboard", replace: true });
+    if (!loading && role && role !== "admin") navigate({ to: role === "technician" ? "/tech" : "/dashboard", replace: true });
   }, [loading, role, navigate]);
 
   const properties = useQuery({
@@ -847,6 +848,8 @@ function AdminPage() {
             </nav>
           )}
 
+          {!property && tab === "clients" && <TechnicianTeam />}
+
           {!property && tab === "today" && (
             <>
               <p className="text-sm text-muted-foreground">{workdayHeading.format(today)} · Central time</p>
@@ -1108,6 +1111,9 @@ function AdminPage() {
                       <option key={visit.id} value={visit.id}>{formatDateTime(visit.scheduled_at)} · {visit.service}</option>
                     ))}
                   </select>
+                  {reportVisit && ["Scheduled", "Rescheduled"].includes(reportVisit.status) &&
+                    <AssignTechnician key={reportVisit.id} visit={reportVisit}
+                      onAssigned={() => Promise.all([propertyAppointments.refetch(), allAppointments.refetch()])} />}
                   {reportVisit && <VisitWorkspace key={reportVisit.id} visit={reportVisit} nextVisit={nextReportVisit}
                     plan={ownerProfile?.membership_tier ?? null}
                     requests={(requests.data ?? []).filter((request) => request.appointment_id === reportVisit.id)}

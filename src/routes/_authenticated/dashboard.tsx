@@ -298,6 +298,7 @@ function DashboardPage() {
 
   // Strict role routing: admins belong in the admin portal only.
   useEffect(() => {
+    if (!loading && role === "technician") navigate({ to: "/tech-login", replace: true });
     if (!loading && role === "admin") navigate({ to: "/login", search, replace: true });
   }, [loading, role, navigate, search]);
 
@@ -556,7 +557,7 @@ function DashboardPage() {
 
   const state = profile.data ? membershipState(profile.data) : "active";
 
-  if (role === "admin") return null;
+  if (role === "admin" || role === "technician") return null;
 
   // Cancelled and past the paid period — the portal is closed.
   if (state === "cancelled") {

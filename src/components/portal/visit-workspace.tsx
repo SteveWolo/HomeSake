@@ -9,7 +9,7 @@ import { defaultBenefitModules } from "@/lib/membership-benefits-content";
 import { sendPublishedVisitReportEmail } from "@/lib/notifications.functions";
 import { formatDateTime, type Appointment } from "@/lib/portal";
 import {
-  checkStates, conditions, emptyVisitReport, loadVisitDraft, readVisitReport, saveVisitDraft, uploadVisitReportPhoto,
+  checkStates, conditions, emptyVisitReport, loadVisitDraft, readVisitReport, saveTechnicianDraft, saveVisitDraft, uploadVisitReportPhoto,
   type VisitReport,
 } from "@/lib/visit-workspace";
 
@@ -31,6 +31,7 @@ export function VisitWorkspace({ visit, nextVisit, plan, requests, onPublished }
   const published = readVisitReport(visit.published_report);
   return (
     <>
+      {draft.data?.submittedAt && <p className="mt-3 font-semibold text-primary">Technician submitted this draft for review.</p>}
       <AdminPaidExtras visit={visit} requests={requests} />
       <VisitEditor visit={visit} nextVisit={nextVisit} plan={plan ?? null} requests={requests} initial={draft.data} published={published}
         onPublished={onPublished} />
@@ -38,13 +39,14 @@ export function VisitWorkspace({ visit, nextVisit, plan, requests, onPublished }
   );
 }
 
-function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onPublished }: {
+export function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onPublished, technician = false }: {
   visit: Appointment;
   nextVisit: Appointment | undefined;
   plan: string | null;
   requests: { id: string; kind: string; details: string; status: string }[];
   initial: Awaited<ReturnType<typeof loadVisitDraft>>;
   published: VisitReport | null;
+  technician?: boolean;
   onPublished: () => Promise<unknown>;
 }) {
   const [report, setReport] = useState<VisitReport>(() => {
@@ -170,11 +172,18 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
       ...savedReport,
       photos: [...new Set([...report.photos, ...preview.checks.flatMap((check) => check.photos ?? [])])],
     } : savedReport;
-    const savedRevision = await saveVisitDraft(visit.id, revision, outgoing, notes, publish);
+    const savedRevision = technician
+      ? await saveTechnicianDraft(visit.id, revision, savedReport, publish)
+      : await saveVisitDraft(visit.id, revision, outgoing, notes, publish);
     setRevision(savedRevision);
     setReport(savedReport);
+    if (technician) {
+      setNotice(publish ? "Draft submitted for admin review." : "Draft saved.");
+      await onPublished();
+      return;
+    }
     queryClient.setQueryData(["visit-report-draft", visit.id], {
-      report: savedReport, notes, revision: savedRevision,
+      report: savedReport, notes, revision: savedRevision, submittedAt: initial?.submittedAt ?? null,
     });
     if (!publish) {
       setNotice("Private draft saved.");
@@ -212,10 +221,10 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
             <textarea className={input} rows={4} maxLength={4000} value={report.summary}
               onChange={(event) => setReport({ ...report, summary: event.target.value })} />
           </label>
-          <label className="block text-sm">Private staff notes
+          {!technician && <label className="block text-sm">Private staff notes
             <textarea className={input} rows={3} maxLength={4000} value={notes}
               onChange={(event) => setNotes(event.target.value)} />
-          </label>
+          </label>}
           <div className="flex flex-wrap gap-2">
             <button type="button" className={button} onClick={() => addModules(suggestedModules)}>Load suggested checklist</button>
             <select aria-label="Add a checklist module" className="rounded-sm border border-border bg-background px-3 py-2 text-sm" value=""
@@ -241,9 +250,9 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
                 Check all
               </label>
               <p className="mt-1 text-xs text-muted-foreground">Rated tasks and tasks marked Needs attention or Not applicable keep their outcome.</p>
-              <p className="mt-1 text-xs text-muted-foreground">{nextVisit
+              {!technician && <p className="mt-1 text-xs text-muted-foreground">{nextVisit
                 ? `Follow-ups go to the draft for ${formatDateTime(nextVisit.scheduled_at)}.`
-                : "Schedule a later visit to carry tasks forward."}</p>
+                : "Schedule a later visit to carry tasks forward."}</p>}
               {(followUpCount > 0 || followUpsOnly) && <button type="button" className={`${button} mt-2`}
                 aria-pressed={followUpsOnly} onClick={() => setFollowUpsOnly(!followUpsOnly)}>
                 {followUpsOnly ? "Show all tasks" : `Show follow-ups (${followUpCount})`}
@@ -312,7 +321,7 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
                         onClick={() => updateCheck(i, { photos: item.photos?.filter((photo) => photo !== path) ?? [] })}>
                         Remove task photo {index + 1}
                       </button>)}
-                    {(item.status === "Needs attention" || item.status === null) && (
+                    {!technician && (item.status === "Needs attention" || item.status === null) && (
                       <button type="button" className={button} disabled={!nextVisit}
                         title={nextVisit ? formatDateTime(nextVisit.scheduled_at) : "Schedule a later visit first"}
                         onClick={() => void carryForward(item)}>Carry forward to next visit</button>
@@ -351,7 +360,7 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
         </fieldset>
       ) : (
         <section className="space-y-4 rounded-sm border border-border p-4">
-          <h4 className="font-semibold">Review before publishing</h4>
+          <h4 className="font-semibold">{technician ? "Review before submitting" : "Review before publishing"}</h4>
           <dl className="flex flex-wrap gap-4 text-sm">
             <div><dt>Completed</dt><dd className="font-semibold">{preview.checks.filter((task) => task.status === "Completed").length}</dd></div>
             <div><dt>Follow-up</dt><dd className="font-semibold">{preview.checks.filter((task) => task.status === "Needs attention").length}</dd></div>
@@ -371,17 +380,17 @@ function VisitEditor({ visit, nextVisit, plan, requests, initial, published, onP
             <input type="checkbox" checked={reviewed} disabled={busy} onChange={(event) => setReviewed(event.target.checked)} />
             I reviewed the checklist and confirmed that every task marked complete was done.
           </label>
-          <label className="flex items-center gap-2 text-sm">
+          {!technician && <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={email} disabled={busy} onChange={(event) => setEmail(event.target.checked)} />
             Email the client a link after publishing
-          </label>
+          </label>}
           <div className="flex flex-wrap gap-2">
             <button type="button" className={button} disabled={busy} onClick={() => setMode("edit")}>Back to editing</button>
-            <button type="button" className={primary} disabled={busy || !reviewed} onClick={() => void save(true)}>Publish report</button>
+            <button type="button" className={primary} disabled={busy || !reviewed} onClick={() => void save(true)}>{technician ? "Submit for admin review" : "Publish report"}</button>
           </div>
         </section>
       )}
-      {hasPublished && <button type="button" disabled={busy} className={button} onClick={() => void run(async () => {
+      {!technician && hasPublished && <button type="button" disabled={busy} className={button} onClick={() => void run(async () => {
         await notify({ data: { appointmentId: visit.id } });
         setNotice("The published report email was accepted.");
       })}>Email published report</button>}

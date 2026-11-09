@@ -30,13 +30,13 @@ export function readVisitReport(value: unknown) {
 }
 
 export async function loadVisitDraft(appointmentId: string) {
-  const { data, error } = await supabase.from("visit_report_drafts").select("report,staff_notes,revision")
+  const { data, error } = await supabase.from("visit_report_drafts").select("report,staff_notes,revision,technician_submitted_at")
     .eq("appointment_id", appointmentId).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
   const report = readVisitReport(data.report);
   if (!report) throw new Error("This draft could not be loaded.");
-  return { report, notes: data.staff_notes, revision: data.revision };
+  return { report, notes: data.staff_notes, revision: data.revision, submittedAt: data.technician_submitted_at };
 }
 
 export async function saveVisitDraft(appointmentId: string, revision: string | null, report: VisitReport, notes: string, publish: boolean) {
@@ -58,6 +58,15 @@ export async function uploadVisitReportPhoto(appointmentId: string, file: File) 
 export async function visitPhotoLinks(paths: string[]) {
   if (!paths.length) return [];
   const { data, error } = await supabase.storage.from(bucket).createSignedUrls(paths, 1800);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+
+export async function saveTechnicianDraft(visitId: string, revision: string | null, report: VisitReport, submit: boolean) {
+  const { data, error } = await supabase.rpc("save_technician_draft", {
+    visit_id: visitId, expected_revision: revision, report_data: reportSchema.parse(report) as Json, submit_for_review: submit,
+  });
   if (error) throw new Error(error.message);
   return data;
 }
