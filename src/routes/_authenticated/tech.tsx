@@ -10,6 +10,7 @@ import type { Json } from "@/integrations/supabase/types";
 
 type Job = Appointment & {
   address: string;
+  client_name?: string | null;
   draft: { report: Json; revision: string; submittedAt: string | null } | null;
 };
 
@@ -24,9 +25,11 @@ function TechnicianDashboard() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
   const cache = useQueryClient();
+  const [propertyId, setPropertyId] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const jobs = useQuery({
     queryKey: ["technician-jobs", user.id],
+    refetchInterval: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("technician_jobs");
       if (error) throw new Error(error.message);
@@ -35,6 +38,19 @@ function TechnicianDashboard() {
   });
   const job = jobs.data?.find((item) => item.id === selected);
   const draft = job?.draft ? readVisitReport(job.draft.report) : null;
+
+  const allJobs = jobs.data ?? [];
+  const clients = [...new Map(allJobs.map((item) => [item.property_id, item])).values()]
+    .sort((a, b) => (a.client_name || a.address).localeCompare(b.client_name || b.address));
+  const selectedClient = clients.find((item) => item.property_id === propertyId);
+  const visibleJobs = selectedClient ? allJobs.filter((item) => item.property_id === selectedClient.property_id) : allJobs;
+  const localDay = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" });
+  const today = localDay.format(new Date());
+  const sections = [
+    { title: "Today", visits: visibleJobs.filter((item) => localDay.format(new Date(item.scheduled_at)) === today) },
+    { title: "Upcoming appointments", visits: visibleJobs.filter((item) => localDay.format(new Date(item.scheduled_at)) > today) },
+    { title: "Earlier scheduled visits", visits: visibleJobs.filter((item) => localDay.format(new Date(item.scheduled_at)) < today) },
+  ];
 
   return (
     <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
@@ -49,18 +65,39 @@ function TechnicianDashboard() {
       {jobs.isPending && <p role="status">Loading assigned visits…</p>}
       {jobs.isError && <p role="alert">Couldn’t load your visits. <button className="underline" onClick={() => void jobs.refetch()}>Try again</button></p>}
       {!job && jobs.data?.length === 0 && <p>No scheduled visits are assigned to you.</p>}
-      {!job && jobs.data?.map((item) => (
-        <article className="panel rounded-sm p-4" key={item.id}>
-          <h2 className="font-semibold">{item.service}</h2>
-          <p>{formatDateTime(item.scheduled_at)}</p>
-          <p>{item.address}</p>
-          {item.draft?.submittedAt && <p className="text-sm text-primary">Submitted for review</p>}
-          <button className="mt-3 rounded-full bg-primary px-4 py-2 text-primary-foreground" onClick={() => setSelected(item.id)}>Open visit</button>
-        </article>
-      ))}
+      {!job && clients.length > 0 && <>
+        <label className="panel grid gap-2 rounded-sm p-4 font-semibold">
+          Select a client or property
+          <select className="min-h-12 w-full rounded-sm border border-border bg-background p-2 text-sm"
+            value={selectedClient?.property_id ?? ""} onChange={(event) => setPropertyId(event.target.value)}>
+            <option value="">All assigned clients</option>
+            {clients.map((item) => <option key={item.property_id} value={item.property_id}>
+              {item.client_name ? `${item.client_name} · ` : ""}{item.address}
+            </option>)}
+          </select>
+        </label>
+        {sections.map(({ title, visits }) => (visits.length > 0 || title === "Upcoming appointments") && (
+          <section key={title} className="space-y-3">
+            <h2 className="font-display text-xl">{title}</h2>
+            {!visits.length && <p className="text-sm text-muted-foreground">No upcoming visits for this selection.</p>}
+            {visits.map((item) => (
+              <article className="panel rounded-sm p-4" key={item.id}>
+                <h3 className="font-semibold">{item.service}</h3>
+                <p className="text-sm">{formatDateTime(item.scheduled_at)}</p>
+                {item.client_name && <p className="mt-1 font-medium">{item.client_name}</p>}
+                <p className="text-sm">{item.address}</p>
+                {item.draft?.submittedAt && <p className="text-sm text-primary">Submitted for review</p>}
+                <button type="button" className="mt-3 min-h-11 rounded-full bg-primary px-4 py-2 text-primary-foreground"
+                  onClick={() => { setSelected(item.id); window.scrollTo(0, 0); }}>Open visit checklist</button>
+              </article>
+            ))}
+          </section>
+        ))}
+      </>}
       {job && <section className="panel rounded-sm p-4">
-        <button type="button" className="mb-3 underline" onClick={() => setSelected(null)}>Back to assigned visits</button>
-        <h2 className="font-semibold">{job.address}</h2>
+        <button type="button" className="mb-3 underline" onClick={() => setSelected(null)}>Back to clients and visits</button>
+        <h2 className="text-lg font-semibold">{job.client_name || job.address}</h2>
+        {job.client_name && <p className="text-sm">{job.address}</p>}
         <a className="text-primary underline" href={`https://maps.apple.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noreferrer">Directions</a>
         {job.draft?.submittedAt && <p className="text-sm text-primary">Submitted for review</p>}
         {job.draft && !draft ? <p role="alert">This draft could not be read. Ask your admin to review it.</p> :
