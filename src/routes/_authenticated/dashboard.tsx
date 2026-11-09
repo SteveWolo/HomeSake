@@ -698,6 +698,29 @@ function DashboardPage() {
 
           {tab === "overview" && property && (
             <>
+              <div className={`${card} border border-primary/30`}>
+                <div>
+                  <p className={label}>
+                    <ListChecks className="size-3.5 text-primary" />
+                    Tasks completed for your home
+                  </p>
+                  {appointments.isError ? <p className="mt-3 text-sm" role="alert">Could not load task counts.</p>
+                    : appointments.isPending ? <p className="mt-3 text-sm" role="status">Loading task counts…</p>
+                    : <>
+                      <dl className="mt-4 flex flex-wrap gap-6">
+                        <div><dt className="text-sm">Today</dt><dd className="text-3xl font-semibold text-primary">{todayChecklistTasks}</dd></div>
+                        <div><dt className="text-sm">All time</dt><dd className="text-3xl font-semibold text-primary">{totalChecklistTasks}</dd></div>
+                      </dl>
+                      <p className="mt-2 text-xs text-muted-foreground">Published reports by visit date · Central time</p>
+                      {dayCounts.size > 0 && <details className="mt-3 text-sm">
+                        <summary className="cursor-pointer text-primary">Counts by day</summary>
+                        <ul className="mt-2 space-y-1">{Array.from(dayCounts).sort(([a], [b]) => b.localeCompare(a)).map(([day, count]) => (
+                          <li key={day}>{day} · {count} completed</li>
+                        ))}</ul>
+                      </details>}
+                    </>}
+                </div>
+              </div>
               <section id="client-home" tabIndex={-1} className="panel rounded-sm p-6" aria-labelledby="next-visit-heading">
                 <p className={label}>Your home, taken care of</p>
                 <h2 id="next-visit-heading" className="font-display mt-3 text-2xl">Your next visit</h2>
@@ -765,7 +788,7 @@ function DashboardPage() {
                   : appointments.isError ? <p role="alert" className="mt-3 text-sm">Could not load your latest report.</p>
                   : <p className="mt-3 text-sm text-muted-foreground">Your published report will appear here after a visit.</p>}
               </section>
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-6 md:grid-cols-2">
                 <div className="panel flex flex-col items-start gap-4 rounded-sm p-6 sm:flex-row sm:items-center sm:gap-6">
                   <ScoreRing score={property.health_score} />
                   <div className="min-w-0">
@@ -799,29 +822,7 @@ function DashboardPage() {
                   </div>
                 </div>
 
-                <div className={`${card} border border-primary/30`}>
-                  <div>
-                    <p className={label}>
-                      <ListChecks className="size-3.5 text-primary" />
-                      Completed checklist tasks
-                    </p>
-                    {appointments.isError ? <p className="mt-3 text-sm" role="alert">Could not load task counts.</p>
-                      : appointments.isPending ? <p className="mt-3 text-sm" role="status">Loading task counts…</p>
-                      : <>
-                        <dl className="mt-4 flex flex-wrap gap-6">
-                          <div><dt className="text-sm">Today</dt><dd className="text-3xl font-semibold text-primary">{todayChecklistTasks}</dd></div>
-                          <div><dt className="text-sm">All time</dt><dd className="text-3xl font-semibold text-primary">{totalChecklistTasks}</dd></div>
-                        </dl>
-                        <p className="mt-2 text-xs text-muted-foreground">Published reports by visit date · Central time</p>
-                        {dayCounts.size > 0 && <details className="mt-3 text-sm">
-                          <summary className="cursor-pointer text-primary">Counts by day</summary>
-                          <ul className="mt-2 space-y-1">{Array.from(dayCounts).sort(([a], [b]) => b.localeCompare(a)).map(([day, count]) => (
-                            <li key={day}>{day} · {count} completed</li>
-                          ))}</ul>
-                        </details>}
-                      </>}
-                  </div>
-                </div>
+
               </div>
 
 
