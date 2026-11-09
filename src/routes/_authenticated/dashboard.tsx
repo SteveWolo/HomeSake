@@ -298,8 +298,8 @@ function DashboardPage() {
 
   // Strict role routing: admins belong in the admin portal only.
   useEffect(() => {
-    if (!loading && role === "admin") navigate({ to: "/admin", replace: true });
-  }, [loading, role, navigate]);
+    if (!loading && role === "admin") navigate({ to: "/login", search, replace: true });
+  }, [loading, role, navigate, search]);
 
   const properties = useQuery({
     queryKey: ["my-properties", user?.id],
@@ -552,6 +552,8 @@ function DashboardPage() {
   const latestSummary = latestReport ? readVisitReport(latestReport.published_report)?.summary || latestReport.visit_report : null;
 
   const state = profile.data ? membershipState(profile.data) : "active";
+
+  if (role === "admin") return null;
 
   // Cancelled and past the paid period — the portal is closed.
   if (state === "cancelled") {
