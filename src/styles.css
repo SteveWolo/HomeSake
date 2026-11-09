@@ -209,3 +209,51 @@
     transform: translate3d(0, -14px, 0) scale(1.02);
   }
 }
+
+/* Portal colors are scoped so the public website keeps its own palette. */
+.portal-redesign {
+  color-scheme: light;
+  --background: #f7f6f2;
+  --foreground: #122544;
+  --surface: #fff;
+  --surface-raised: #fff;
+  --card: #fff;
+  --card-foreground: #122544;
+  --popover: #fff;
+  --popover-foreground: #122544;
+  --primary: #805707;
+  --primary-foreground: #fff;
+  --secondary: #f3eee1;
+  --secondary-foreground: #122544;
+  --muted: #edf0f4;
+  --muted-foreground: #495872;
+  --accent: #f3eee1;
+  --accent-foreground: #122544;
+  --destructive: #a42226;
+  --destructive-foreground: #fff;
+  --border: #cbd2dc;
+  --input: #aeb9ca;
+  --ring: #805707;
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.portal-redesign .panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  box-shadow: 0 1px 3px #1225440c;
+}
+
+.portal-brand {
+  background: #122544;
+  color: #fff;
+}
+
+.portal-mobile-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.portal-redesign :is(h2, h3, section, li)[id] {
+  scroll-margin-top: 1rem;
+}

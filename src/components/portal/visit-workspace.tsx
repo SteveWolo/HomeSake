@@ -235,7 +235,11 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
           </div>
           {report.checks.length > 0 && (
             <details open>
-              <summary className="cursor-pointer font-semibold">Checklist · {report.checks.filter((item) => item.status === "Completed").length} of {report.checks.length} completed</summary>
+              <summary className="cursor-pointer font-semibold">
+                Checklist <span className="ml-2 inline-block rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-900">
+                  {report.checks.filter((item) => item.status === "Completed").length} of {report.checks.length} complete
+                </span>
+              </summary>
               <label className="mt-3 flex w-fit items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" className="size-4" checked={allChecked} disabled={!checkableTasks.length}
                   onChange={(event) => {
@@ -257,7 +261,7 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
                 aria-pressed={followUpsOnly} onClick={() => setFollowUpsOnly(!followUpsOnly)}>
                 {followUpsOnly ? "Show all tasks" : `Show follow-ups (${followUpCount})`}
               </button>}
-              <ol className="mt-2 max-h-[28rem] divide-y divide-border overflow-y-auto rounded-sm border border-border px-3">
+              <ol className={`mt-2 divide-y divide-border rounded-sm border border-border px-3 ${technician ? "" : "max-h-[28rem] overflow-y-auto"}`}>
                 {report.checks.map((item, i) => (!followUpsOnly || item.status === "Needs attention") && (
                   <li key={i} className="space-y-2 py-3 text-sm">
                     <label className="flex items-start gap-2">
@@ -353,9 +357,9 @@ export function VisitEditor({ visit, nextVisit, plan, requests, initial, publish
               </button>)}
             </div>
           </div>}
-          <div className="flex flex-wrap gap-2">
+          <div className={`flex flex-wrap gap-2 ${technician ? "sticky bottom-0 z-10 border-t border-border bg-surface py-3" : ""}`}>
             <button type="button" className={button} onClick={() => void save(false)}>Save draft</button>
-            <button type="button" className={primary} onClick={() => { setReviewed(false); setMode("preview"); }}>Finish visit · Review report</button>
+            <button type="button" className={primary} onClick={() => { setReviewed(false); setMode("preview"); }}>{technician ? "Review and submit" : "Finish visit · Review report"}</button>
           </div>
         </fieldset>
       ) : (
