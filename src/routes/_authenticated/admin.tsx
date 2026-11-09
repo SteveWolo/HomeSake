@@ -1,4 +1,4 @@
-import { AssignTechnician, TechnicianTeam } from "@/components/admin/technician-team";
+import { AssignPropertyTechnician, AssignTechnician, TechnicianTeam } from "@/components/admin/technician-team";
 import { MaintenanceRecord } from "@/components/portal/maintenance-record";
 import { AdminIssueProgress, IssueHistory } from "@/components/portal/issue-progress";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -942,6 +942,9 @@ function AdminPage() {
                   Send update notification to client
                 </button>
               </section>
+
+              <AssignPropertyTechnician key={property.id} property={property}
+                onAssigned={() => Promise.all([properties.refetch(), propertyAppointments.refetch(), allAppointments.refetch()])} />
 
               <MaintenanceRecord key={property.id} propertyId={property.id} visits={propertyAppointments.data ?? []}
                 visitsLoading={propertyAppointments.isPending} visitsFailed={propertyAppointments.isError} admin />

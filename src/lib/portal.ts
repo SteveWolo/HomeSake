@@ -14,6 +14,7 @@ export type Property = {
   credits_cents: number;
   home_notes?: string | null;
   tasks_completed_count?: number;
+  default_technician_id?: string | null;
 };
 
 export type ActivityItem = {
