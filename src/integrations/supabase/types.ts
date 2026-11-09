@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      technicians: {
+        Row: { user_id: string; name: string }
+        Insert: { user_id: string; name: string }
+        Update: { name?: string }
+        Relationships: []
+      }
       activity_items: {
         Row: {
           created_at: string
@@ -58,6 +64,7 @@ export type Database = {
           notes: string | null
           property_id: string
           reminder_sent_at: string | null
+          technician_id?: string | null
           scheduled_at: string
           service: string
           status: string
@@ -74,6 +81,7 @@ export type Database = {
           notes?: string | null
           property_id: string
           reminder_sent_at?: string | null
+          technician_id?: string | null
           scheduled_at: string
           service: string
           status?: string
@@ -90,6 +98,7 @@ export type Database = {
           notes?: string | null
           property_id?: string
           reminder_sent_at?: string | null
+          technician_id?: string | null
           scheduled_at?: string
           service?: string
           status?: string
@@ -468,7 +477,7 @@ export type Database = {
         }]
       }
       visit_report_drafts: {
-        Row: { appointment_id: string; report: Json; staff_notes: string; revision: string }
+        Row: { appointment_id: string; report: Json; staff_notes: string; revision: string; technician_submitted_at: string | null }
         Insert: { appointment_id: string; report: Json; staff_notes?: string; revision?: string }
         Update: { report?: Json; staff_notes?: string; revision?: string }
         Relationships: []
@@ -520,6 +529,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      technician_jobs: { Args: Record<never, never>; Returns: Json }
+      save_technician_draft: {
+        Args: { visit_id: string; expected_revision: string | null; report_data: Json; submit_for_review: boolean }
+        Returns: string
+      }
       respond_to_paid_extra: {
         Args: { quote_id: string; decision: string }
         Returns: undefined

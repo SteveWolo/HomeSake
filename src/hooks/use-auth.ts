@@ -3,7 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "admin" | "client";
+export type AppRole = "admin" | "technician" | "client";
 
 export type AuthState = {
   loading: boolean;
@@ -19,7 +19,9 @@ async function fetchRole(userId: string): Promise<AppRole> {
     .eq("user_id", userId)
     .order("role", { ascending: true });
   const roles = (data ?? []).map((r) => r.role as AppRole);
-  return roles.includes("admin") ? "admin" : "client";
+  if (roles.includes("admin")) return "admin";
+  const { data: tech } = await supabase.from("technicians").select("user_id").eq("user_id", userId).maybeSingle();
+  return tech ? "technician" : "client";
 }
 
 export function useAuth(): AuthState {

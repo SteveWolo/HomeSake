@@ -263,6 +263,7 @@ export type Appointment = {
   notes: string | null;
   reminder_sent_at: string | null;
   visit_report?: string | null;
+  technician_id?: string | null;
   published_report?: import("@/integrations/supabase/types").Json | null;
   confirmation_sent_at?: string | null;
   day_before_sent_at?: string | null;
@@ -288,9 +289,12 @@ const PROFILE_COLUMNS =
   "id, full_name, email, phone, membership_tier, payment_status, cancellation_requested, subscription_status, current_period_end";
 
 export async function listClientProfiles() {
-  return unwrap<ClientProfile[]>(
-    await supabase.from("profiles").select(PROFILE_COLUMNS).order("full_name"),
-  );
+  const [profiles, technicians] = await Promise.all([
+    supabase.from("profiles").select(PROFILE_COLUMNS).order("full_name"),
+    supabase.from("technicians").select("user_id"),
+  ]);
+  const technicianIds = new Set(unwrap<{ user_id: string }[]>(technicians).map((row) => row.user_id));
+  return unwrap<ClientProfile[]>(profiles).filter((profile) => !technicianIds.has(profile.id));
 }
 
 export async function getMyProfile(userId: string) {
