@@ -122,44 +122,17 @@ export async function adminThread(id: string) {
 }
 
 export async function notifyChatAdmins(messageId: string) {
-  let recipients = (process.env["ADMIN_EMAIL"] ?? "")
-    .split(",")
-    .map((email) => email.trim())
-    .filter(Boolean);
-  if (!recipients.length) {
-    const { data: admins, error } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
-    if (error) throw error;
-    if (admins.length) {
-      const profiles = await supabaseAdmin
-        .from("profiles")
-        .select("email")
-        .in(
-          "id",
-          admins.map((admin) => admin.user_id),
-        );
-      if (profiles.error) throw profiles.error;
-      recipients = profiles.data.flatMap((profile) => (profile.email ? [profile.email] : []));
-    }
-  }
-  if (!recipients.length) throw new Error("No admin email on file.");
   const subject = "New HomeSake website message";
-  await Promise.all(
-    [...new Set(recipients)].map((to, index) =>
-      sendEmail({
-        to,
-        subject,
-        idempotencyKey: `website-chat/${messageId}/${index}`,
-        html: layout({
-          title: subject,
-          intro: "A visitor sent a message. Open your HomeSake inbox to reply.",
-          bodyHtml: "",
-          ctaLabel: "Open HomeSake inbox",
-          ctaHref: `${siteUrl()}/admin?inbox=1`,
-        }),
-      }),
-    ),
-  );
+  await sendEmail({
+    to: "support@yourhomesake.com",
+    subject,
+    idempotencyKey: `website-chat/${messageId}/0`,
+    html: layout({
+      title: subject,
+      intro: "A visitor sent a message. Open your HomeSake inbox to reply.",
+      bodyHtml: "",
+      ctaLabel: "Open HomeSake inbox",
+      ctaHref: `${siteUrl()}/admin?inbox=1`,
+    }),
+  });
 }
