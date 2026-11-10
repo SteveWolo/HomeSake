@@ -124,7 +124,7 @@ export async function adminThread(id: string) {
 export async function notifyChatAdmins(messageId: string) {
   const subject = "New HomeSake website message";
   await sendEmail({
-    to: "support@yourhomesake.com",
+    to: "stevewoloszyk1@gmail.com",
     subject,
     idempotencyKey: `website-chat/${messageId}/0`,
     html: layout({
