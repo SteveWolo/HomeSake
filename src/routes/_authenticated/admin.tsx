@@ -761,7 +761,7 @@ function AdminPage() {
   );
 
   return (
-    <div className="portal-redesign min-h-screen pb-20 lg:flex lg:pb-0">
+    <div className="portal-redesign admin-portal min-h-screen pb-20 lg:flex lg:pb-0">
       <aside className={sidebarShell}>
         <div className="portal-brand flex h-16 items-center px-4 lg:h-20 lg:px-6">
           <Link to="/" aria-label="Home Harmony Hub — home">
@@ -864,6 +864,13 @@ function AdminPage() {
       </nav>
 
       <div className="min-w-0 flex-1">
+        <div className="portal-topbar">
+          <div className="portal-topbar-inner">
+            <Link to="/" aria-label="HomeSake home"><img src={logoUrl} alt="HomeSake" className="portal-topbar-logo" /></Link>
+            <span>Admin portal</span>
+            <button type="button" className="portal-signout" onClick={signOut}>Sign out</button>
+          </div>
+        </div>
         <header className="grid gap-4 border-b border-border px-4 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-start lg:px-10">
           <div className="min-w-0">
             <p className="eyebrow">Admin &amp; contractor portal</p>
@@ -898,9 +905,15 @@ function AdminPage() {
           )}
         </header>
 
-        <main className="space-y-6 px-4 py-8 sm:px-6 lg:px-10">
+        <nav className="portal-horizontal-nav" aria-label="Admin portal sections">
+          {tabs.map((entry) => <button key={entry.id} type="button" aria-current={tab === entry.id && !activeId ? "page" : undefined}
+            className={tab === entry.id && !activeId ? "is-active" : ""}
+            onClick={() => { setReviewId(null); setTab(entry.id); setActiveId(null); window.scrollTo(0, 0); }}>{entry.id === "clients" ? "Clients" : entry.id === "appointments" ? "Calendar" : entry.id === "invoices" ? "Billing" : entry.id === "inbox" ? "Inbox" : entry.id === "site" ? "Website editor" : "Today"}</button>)}
+        </nav>
+
+        <main className="portal-content space-y-6 px-4 py-8 sm:px-6 lg:px-10">
           <h1 className="font-display text-2xl break-words sm:text-3xl">
-            {property ? `${ownerLabel(property.owner_id)} — property overview` : tab === "today" ? "Operations" : tabs.find((t) => t.id === tab)?.label}
+            {property ? `${ownerLabel(property.owner_id)} — property overview` : tab === "today" ? "Today’s operations" : tabs.find((t) => t.id === tab)?.label}
           </h1>
 
           {reviewVisit ? (
@@ -953,17 +966,10 @@ function AdminPage() {
               </div>
               {scheduleShortcut && <p className="text-sm">Choose a client property above to open its scheduling form.</p>}
               {reviewQueue.isError && <p role="alert" className="text-sm">Could not load the review queue or urgent findings.</p>}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <a href="#technician-reviews" className="panel flex min-h-12 items-center justify-between gap-2 p-4 font-semibold">
-                  Reports to review <span className="rounded-full bg-primary px-2 py-1 text-sm text-primary-foreground">
-                    {reviewQueue.isSuccess ? reviews.length : "—"}
-                  </span>
-                </a>
-                <a href="#admin-urgent-findings" className="flex min-h-12 items-center justify-between gap-2 rounded-lg border border-destructive bg-destructive/5 p-4 font-semibold text-destructive">
-                  Urgent findings <span className="rounded-full bg-destructive px-2 py-1 text-sm text-destructive-foreground">
-                    {reviewQueue.isSuccess ? urgentCount : "—"}
-                  </span>
-                </a>
+              <div className="portal-metrics-grid">
+                <a href="#today-visits" className="portal-metric-card"><span>Today’s visits</span><strong>{allAppointments.isPending ? "—" : todayVisits.length}</strong><small>Scheduled for today</small></a>
+                <a href="#service-requests" className="portal-metric-card"><span>New requests</span><strong>{requests.isPending ? "—" : pendingRequests.length}</strong><small>Client requests to review</small></a>
+                <a href="#admin-urgent-findings" className="portal-metric-card is-urgent"><span>Needs action</span><strong>{reviewQueue.isSuccess ? urgentCount : "—"}</strong><small>Urgent follow-up</small></a>
               </div>
               <nav aria-label="Today shortcuts" className="flex flex-wrap gap-2">
                 <a href="#today-visits" className={ghostBtn}>Appointments ({todayVisits.length})</a>

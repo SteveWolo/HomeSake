@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDateTime, type Appointment } from "@/lib/portal";
 import { readVisitReport } from "@/lib/visit-workspace";
 import type { Json } from "@/integrations/supabase/types";
+import logoUrl from "@/assets/homesake-logo.png";
 
 type Job = Appointment & {
   address: string;
@@ -67,16 +68,18 @@ function TechnicianDashboard() {
   ];
 
   return (
-    <div className="portal-redesign min-h-screen">
-    <main className="mx-auto max-w-3xl space-y-4 px-4 pb-8">
-      <header className="portal-brand -mx-4 flex items-center justify-between gap-3 px-4 py-4 sm:mx-0 sm:rounded-b-lg">
-        <h1 className="font-display text-3xl">{job ? "Visit checklist" : "My jobs"}</h1>
+    <div className="portal-redesign technician-portal min-h-screen">
+    <main className="portal-content mx-auto max-w-4xl space-y-4 px-4 pb-8">
+      <header className="portal-brand portal-tech-masthead -mx-4 flex items-center justify-between gap-3 px-4 py-4 sm:mx-0 sm:rounded-b-lg">
+        <Link to="/" aria-label="HomeSake home"><img src={logoUrl} alt="HomeSake" className="portal-topbar-logo" /></Link>
+        <span className="text-sm">Technician portal</span>
         <button type="button" className="min-h-11 text-sm underline" onClick={async () => {
           await supabase.auth.signOut();
           cache.clear();
           await navigate({ to: "/tech-login", replace: true });
         }}>Sign out</button>
       </header>
+      <h1 className="font-display text-3xl">{job ? "Visit checklist" : "Your day at a glance"}</h1>
       {jobs.isPending && <p role="status">Loading assigned visits…</p>}
       {jobs.isError && <p role="alert">Couldn’t load your visits. <button className="underline" onClick={() => void jobs.refetch()}>Try again</button></p>}
       {!job && jobs.data?.length === 0 && <p>No scheduled visits are assigned to you.</p>}
@@ -91,7 +94,7 @@ function TechnicianDashboard() {
             </option>)}
           </select>
         </label>
-        <nav aria-label="Visit schedule" className="flex gap-2">
+        <nav aria-label="Visit schedule" className="portal-horizontal-nav portal-tech-nav">
           {sections.map(({ title, visits }) => <button key={title} type="button"
             aria-pressed={scheduleTab === title}
             className={`min-h-11 rounded-sm border border-border px-3 text-sm ${scheduleTab === title ? "bg-primary text-primary-foreground" : ""}`}

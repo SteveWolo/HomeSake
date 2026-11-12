@@ -245,6 +245,201 @@
   box-shadow: 0 1px 3px #1225440c;
 }
 
+/* The three role portals share the same HomeSake dashboard frame as the approved layouts. */
+.admin-portal > aside,
+.client-portal > aside,
+.admin-portal > nav[aria-label="Admin portal"],
+.client-portal > nav[aria-label="Client portal"] {
+  display: none !important;
+}
+
+.portal-topbar {
+  background: #122544;
+  color: #fff;
+}
+
+.portal-topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 1180px;
+  min-height: 4.5rem;
+  margin: 0 auto;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+}
+
+.portal-topbar-logo {
+  display: block;
+  width: auto;
+  max-width: 10rem;
+  height: 2.4rem;
+  object-fit: contain;
+}
+
+.portal-signout {
+  min-height: 2.75rem;
+  margin-left: auto;
+  padding: 0 0.75rem;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-portal > .min-w-0.flex-1,
+.client-portal > .min-w-0.flex-1 {
+  min-width: 0;
+}
+
+.admin-portal > .min-w-0.flex-1 > header,
+.client-portal > .min-w-0.flex-1 > header {
+  max-width: 1180px;
+  margin: 0 auto;
+  border-bottom-color: #d8dde5;
+}
+
+.portal-horizontal-nav {
+  display: flex;
+  gap: 0.25rem;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid #d8dde5;
+  scrollbar-width: thin;
+}
+
+.portal-horizontal-nav button {
+  flex: 0 0 auto;
+  min-height: 3.25rem;
+  padding: 0 1rem;
+  border-bottom: 2px solid transparent;
+  color: #122544;
+  font-size: 0.875rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.portal-horizontal-nav button:hover,
+.portal-horizontal-nav button.is-active,
+.portal-horizontal-nav button[aria-pressed="true"] {
+  border-bottom-color: #805707;
+  color: #805707;
+}
+
+.portal-content {
+  width: min(100%, 1180px);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.admin-portal .portal-content,
+.client-portal .portal-content {
+  padding-top: 2rem;
+}
+
+.admin-portal .portal-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.admin-portal .portal-metric-card {
+  display: flex;
+  min-height: 8.5rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid #e0e4ea;
+  border-radius: 1rem;
+  background: #fff;
+  padding: 1.25rem 1.5rem;
+  color: #122544;
+  text-decoration: none;
+}
+
+.admin-portal .portal-metric-card span {
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.admin-portal .portal-metric-card strong {
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.admin-portal .portal-metric-card small {
+  color: #596981;
+  font-size: 0.8rem;
+}
+
+.admin-portal .portal-metric-card.is-urgent {
+  border-color: #d9a3a4;
+  background: #fffafa;
+  color: #a42226;
+}
+
+.client-portal .portal-client-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.client-portal .portal-client-content > * { order: 3; }
+.client-portal .portal-client-content > h1 { order: 0; }
+.client-portal #client-task-counter { order: 1; }
+.client-portal #home-health { order: 2; }
+.client-portal #urgent-client-panel { order: 3; }
+
+.technician-portal .portal-tech-masthead {
+  min-height: 4.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.technician-portal .portal-content > h1 {
+  margin-top: 1.5rem;
+}
+
+.technician-portal .portal-horizontal-nav {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 640px) {
+  .portal-topbar-inner {
+    min-height: 4rem;
+    padding: 0.6rem 1rem;
+  }
+
+  .portal-topbar-logo {
+    max-width: 8.5rem;
+    height: 2rem;
+  }
+
+  .portal-horizontal-nav {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+  }
+
+  .portal-horizontal-nav button {
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .admin-portal .portal-metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .admin-portal .portal-metric-card {
+    min-height: 6.25rem;
+    padding: 1rem 1.25rem;
+  }
+}
+
 .portal-brand {
   background: #122544;
   color: #fff;
