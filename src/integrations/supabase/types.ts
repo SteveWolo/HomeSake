@@ -533,6 +533,10 @@ export type Database = {
     }
     Functions: {
       set_property_technician: { Args: { property_key: string; technician_key: string | null }; Returns: number }
+      reassign_technician_date_range: {
+        Args: { from_technician: string; to_technician: string; start_day: string; end_day: string }
+        Returns: number
+      }
       technician_jobs: { Args: Record<never, never>; Returns: Json }
       save_technician_draft: {
         Args: { visit_id: string; expected_revision: string | null; report_data: Json; submit_for_review: boolean }

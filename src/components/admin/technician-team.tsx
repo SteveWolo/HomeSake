@@ -37,6 +37,29 @@ export function TechnicianTeam() {
       await Promise.all([cache.invalidateQueries({ queryKey: teamKey }), cache.invalidateQueries({ queryKey: ["client-profiles"] })]);
     },
   });
+  const [fromTech, setFromTech] = useState("");
+  const [toTech, setToTech] = useState("");
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+  const [startDay, setStartDay] = useState(today);
+  const [endDay, setEndDay] = useState(today);
+  const reassign = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("reassign_technician_date_range", {
+        from_technician: fromTech,
+        to_technician: toTech,
+        start_day: startDay,
+        end_day: endDay,
+      });
+      if (error) throw new Error(error.message);
+      return Number(data ?? 0);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        cache.invalidateQueries({ queryKey: ["all-appointments"] }),
+        cache.invalidateQueries({ queryKey: ["technician-jobs"] }),
+      ]);
+    },
+  });
 
   return (
     <section className="panel rounded-sm p-6" aria-labelledby="technician-team">
@@ -62,6 +85,49 @@ export function TechnicianTeam() {
       </form>
       {save.isSuccess && <p role="status" className="mt-2 text-sm">Technician created. Share the sign-in link and credentials securely.</p>}
       {save.error && <p role="alert" className="mt-2 text-sm text-destructive">{save.error.message}</p>}
+      <div className="mt-6 border-t border-border pt-5">
+        <h3 className="font-semibold">Cover a technician’s time off</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Move all scheduled visits from one technician to another for one day or a date range. Their regular assignments are not changed.
+        </p>
+        <form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" onSubmit={(event) => {
+          event.preventDefault();
+          if (!fromTech || !toTech || fromTech === toTech || !startDay || !endDay || startDay > endDay) return;
+          const fromName = team.data?.find((item) => item.user_id === fromTech)?.name ?? "the selected technician";
+          const toName = team.data?.find((item) => item.user_id === toTech)?.name ?? "the covering technician";
+          if (!window.confirm(`Reassign ${fromName}’s scheduled visits from ${startDay} through ${endDay} to ${toName}?`)) return;
+          reassign.mutate();
+        }}>
+          <label className="grid gap-1 text-sm">Technician who is out
+            <select className={field} required value={fromTech} onChange={(event) => { reassign.reset(); setFromTech(event.target.value); }}>
+              <option value="">Choose technician…</option>
+              {team.data?.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">Covering technician
+            <select className={field} required value={toTech} onChange={(event) => { reassign.reset(); setToTech(event.target.value); }}>
+              <option value="">Choose technician…</option>
+              {team.data?.filter((item) => item.user_id !== fromTech).map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="grid gap-1 text-sm">From
+              <input className={field} type="date" required value={startDay} max={endDay || undefined}
+                onChange={(event) => { reassign.reset(); setStartDay(event.target.value); }} />
+            </label>
+            <label className="grid gap-1 text-sm">Through
+              <input className={field} type="date" required value={endDay} min={startDay || undefined}
+                onChange={(event) => { reassign.reset(); setEndDay(event.target.value); }} />
+            </label>
+          </div>
+          <button className={`${button} sm:col-span-2 lg:col-span-1`}
+            disabled={reassign.isPending || team.isPending || !team.data?.length || !fromTech || !toTech || fromTech === toTech || !startDay || !endDay || startDay > endDay}>
+            {reassign.isPending ? "Reassigning…" : "Reassign visits"}
+          </button>
+        </form>
+        {reassign.isSuccess && <p role="status" className="mt-3 text-sm">{reassign.data} scheduled {reassign.data === 1 ? "visit was" : "visits were"} reassigned.</p>}
+        {reassign.error && <p role="alert" className="mt-3 text-sm text-destructive">{reassign.error.message}</p>}
+      </div>
     </section>
   );
 }

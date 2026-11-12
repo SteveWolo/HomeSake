@@ -11,7 +11,20 @@ import type { Json } from "@/integrations/supabase/types";
 type Job = Appointment & {
   address: string;
   client_name?: string | null;
+  home_notes?: string | null;
+  home_details?: { category: string; location: string; specifications: string; notes: string }[];
   draft: { report: Json; revision: string; submittedAt: string | null } | null;
+};
+
+const homeDetailLabels: Record<string, string> = {
+  hvac: "HVAC filter",
+  smoke: "Smoke detector batteries",
+  sump: "Sump pump",
+  softener: "Water softener",
+  water: "Main water shutoff",
+  electrical: "Electrical panel",
+  home: "Home setup notes",
+  emergency: "Emergency contact & permissions",
 };
 
 export const Route = createFileRoute("/_authenticated/tech")({
@@ -109,6 +122,19 @@ function TechnicianDashboard() {
         <h2 className="text-lg font-semibold">{job.client_name || job.address}</h2>
         {job.client_name && <p className="text-sm">{job.address}</p>}
         <a className="mt-2 inline-flex min-h-11 items-center rounded-sm border border-border px-3 text-sm font-semibold text-primary" href={`https://maps.apple.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noreferrer">Directions</a>
+        {(job.home_notes?.trim() || job.home_details?.length) && <section className="mt-4 rounded-md border border-border bg-background p-4" aria-labelledby="tech-home-profile">
+          <h3 id="tech-home-profile" className="font-semibold">Home profile &amp; visit notes</h3>
+          {job.home_notes?.trim() && <p className="mt-2 whitespace-pre-wrap break-words text-sm"><strong>Client instructions:</strong> {job.home_notes}</p>}
+          {!!job.home_details?.length && <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+            {job.home_details.map((detail) => <div key={detail.category} className="rounded-sm border border-border bg-surface p-3 text-sm">
+              <dt className="font-semibold">{homeDetailLabels[detail.category] ?? detail.category}</dt>
+              {detail.location && <dd className="mt-1"><span className="font-medium">Location:</span> {detail.location}</dd>}
+              {detail.specifications && <dd className="mt-1"><span className="font-medium">Size/details:</span> {detail.specifications}</dd>}
+              {detail.notes && <dd className="mt-1 whitespace-pre-wrap break-words"><span className="font-medium">Notes:</span> {detail.notes}</dd>}
+            </div>)}
+          </dl>}
+          <p className="mt-3 text-xs text-muted-foreground">Use the emergency permission recorded here before taking any safety action. If no permission is recorded, contact the homeowner or emergency contact unless immediate action is needed to prevent active damage.</p>
+        </section>}
         {job.draft?.submittedAt && <p className="text-sm text-primary">Submitted for review</p>}
         {job.draft && !draft ? <p role="alert">This draft could not be read. Ask your admin to review it.</p> :
           <VisitEditor key={job.id} visit={job} nextVisit={undefined} plan={null} requests={[]}

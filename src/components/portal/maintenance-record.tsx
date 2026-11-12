@@ -12,6 +12,10 @@ const categories = [
   { id: "smoke", title: "Smoke detectors", match: /^(test|check) smoke[- ]detectors?/i },
   { id: "sump", title: "Sump pumps", match: /^(visually check|test|check) sump (pump|backup-battery)/i },
   { id: "softener", title: "Water softeners", match: /^(check|refill) water[- ]softener/i },
+  { id: "water", title: "Main water shutoff", match: /^(check|locate) (main )?water shutoff/i },
+  { id: "electrical", title: "Electrical panel", match: /^(check|locate) (main )?electrical panel/i },
+  { id: "home", title: "Home setup notes", match: /^home setup/i },
+  { id: "emergency", title: "Emergency contact & permissions", match: /^emergency plan/i },
 ];
 
 type RecordDetails = Pick<Tables<"maintenance_records">, "location" | "specifications" | "notes">;
@@ -86,6 +90,9 @@ export function MaintenanceRecord({ propertyId, visits, visitsLoading, visitsFai
     <section className="panel rounded-sm p-6" aria-labelledby="maintenance-record">
       <h2 id="maintenance-record" className="font-display text-xl">Home maintenance record</h2>
       <p className="mt-2 text-sm text-muted-foreground">Equipment details and work completed in published visit reports.</p>
+      {admin && <p className="mt-2 text-sm text-muted-foreground">
+        During the first home setup, record filter sizes, detector batteries, shutoff and panel locations, and the homeowner-approved emergency contact and actions. Assigned technicians see these details before a visit; clients can also review them.
+      </p>}
       <label className="mt-4 grid gap-1 text-sm">
         Search equipment or service
         <input type="search" className="rounded-sm border border-border bg-background p-2" value={search}
