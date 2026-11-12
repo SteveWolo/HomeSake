@@ -386,6 +386,8 @@
   flex-direction: column;
 }
 
+.client-portal .portal-client-content > * { order: 3; }
+.client-portal .portal-client-content > h1 { order: 0; }
 .client-portal #client-task-counter { order: 1; }
 .client-portal #home-health { order: 2; }
 .client-portal #urgent-client-panel { order: 3; }
