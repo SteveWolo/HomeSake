@@ -614,7 +614,7 @@ function DashboardPage() {
 
   return (
 
-    <div className="portal-redesign min-h-screen pb-20 lg:flex lg:pb-0">
+    <div className="portal-redesign client-portal min-h-screen pb-20 lg:flex lg:pb-0">
       <aside className={sidebarShell}>
         <div className="portal-brand flex h-16 items-center justify-between px-4 lg:h-20 lg:px-6">
           <Link to="/" aria-label="HomeSake home">
@@ -653,6 +653,13 @@ function DashboardPage() {
       </nav>
 
       <div className="min-w-0 flex-1">
+        <div className="portal-topbar">
+          <div className="portal-topbar-inner">
+            <Link to="/" aria-label="HomeSake home"><img src={logoUrl} alt="HomeSake" className="portal-topbar-logo" /></Link>
+            <span>Client portal</span>
+            <button type="button" className="portal-signout" onClick={signOut}>Sign out</button>
+          </div>
+        </div>
         <header className="grid gap-4 border-b border-border px-4 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center lg:px-10">
           <div className="min-w-0">
             <p className="eyebrow">Active property</p>
@@ -683,9 +690,20 @@ function DashboardPage() {
           </div>
         </header>
 
-        <main className="space-y-6 px-4 py-8 sm:px-6 lg:px-10">
+        <nav className="portal-horizontal-nav" aria-label="Client portal sections">
+          {[
+            { label: "Overview", action: () => setTab("overview"), active: tab === "overview" },
+            { label: "Visits", action: () => setTab("appointments"), active: tab === "appointments" },
+            { label: "My home", action: () => setTab("maintenance"), active: tab === "maintenance" },
+            { label: "Requests", action: () => { setTab("appointments"); setRequestFocus(true); }, active: tab === "appointments" },
+            { label: "Membership", action: () => setTab("membership"), active: tab === "membership" },
+          ].map((entry) => <button key={entry.label} type="button" aria-current={entry.active ? "page" : undefined}
+            className={entry.active ? "is-active" : ""} onClick={() => { entry.action(); window.scrollTo(0, 0); }}>{entry.label}</button>)}
+        </nav>
+
+        <main className="portal-content portal-client-content space-y-6 px-4 py-8 sm:px-6 lg:px-10">
           <h1 className="font-display text-2xl sm:text-3xl">
-            {tabs.find((t) => t.id === tab)?.label}
+            {tab === "overview" ? "Your home, taken care of." : tabs.find((t) => t.id === tab)?.label}
           </h1>
 
 
@@ -712,7 +730,7 @@ function DashboardPage() {
 
           {tab === "overview" && property && (
             <>
-              <div className={`${card} border border-primary/30`}>
+              <div id="client-task-counter" className={`${card} border border-primary/30`}>
                 <div>
                   <p className={label}>
                     <ListChecks className="size-3.5 text-primary" />
@@ -737,7 +755,7 @@ function DashboardPage() {
                 </div>
               </div>
               {(urgentHealth.length > 0 || urgentIssues.length > 0) && (
-                <section className="rounded-lg border border-destructive bg-destructive/5 p-4" aria-labelledby="urgent-client-heading">
+                <section id="urgent-client-panel" className="rounded-lg border border-destructive bg-destructive/5 p-4" aria-labelledby="urgent-client-heading">
                   <h2 id="urgent-client-heading" className="text-lg font-semibold text-destructive">Needs immediate attention</h2>
                   {urgentHealth.map(({ label: title, result }) => result && (
                     <div key={title} className="mt-3 text-sm">
